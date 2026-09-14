@@ -13,8 +13,12 @@ import {
 } from './js/cidadaos.js';
 import {
     resetCotas, openCotaModal, closeCotaModal, handleCotaFormSubmit,
-    loadCotasPage, renderCotasHistoryFor, generateCotasPorLiderancaExcel
+    loadCotasPage, generateCotasPorLiderancaExcel,
+    setupCotasLiderancaFilter, clearCotasFiltro,
+    openCotaHistoryModal, closeCotaHistoryModal,
+    downloadCotaHistoryCSV, printCotaHistory
 } from './js/cotas.js';
+import { resetVeiculos, loadVeiculosPage, setupVeiculosFiltro } from './js/veiculos.js';
 import {
     initDemandas,
     handleDemandaFormSubmit, openDemandaDetailsModal,
@@ -128,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -217,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onRequestDelete: (id, type) => requestDelete(id, type),
             onLeadersChanged: () => updateLeaderSelects(),
             onOpenMap: (cidadaosToPlot) => openMapModal(cidadaosToPlot),
-            onRenderCotas: (cidadao) => renderCotasHistoryFor(cidadao)
+            onOpenCotaHistory: (cidadao) => openCotaHistoryModal(cidadao)
         });
         initDemandas({
             onRequestDelete: (id, type) => requestDelete(id, type),
@@ -341,7 +345,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cancel-cota-btn')?.addEventListener('click', closeCotaModal);
         document.getElementById('cota-form')?.addEventListener('submit', handleCotaFormSubmit);
         document.getElementById('cotas-relatorio-lideranca-btn')?.addEventListener('click', generateCotasPorLiderancaExcel);
-        // Toggle da seção Veículo no modal de cidadão (Sim/Não → Tipo → quantidade)
+        document.getElementById('cotas-filter-clear-btn')?.addEventListener('click', clearCotasFiltro);
+        // Modal de histórico de abastecimento (separado da ficha do cidadão)
+        document.getElementById('close-cota-history-modal-btn')?.addEventListener('click', closeCotaHistoryModal);
+        document.getElementById('cota-history-print-btn')?.addEventListener('click', printCotaHistory);
+        document.getElementById('cota-history-download-btn')?.addEventListener('click', downloadCotaHistoryCSV);
+        // Veículos
+        setupVeiculosFiltro();
+        // Toggle da seção Veículos no modal de cidadão (Sim/Não → lista dinâmica)
         setupVeiculoToggle();
         const addUserBtn = document.getElementById('add-user-btn');
         if (addUserBtn) addUserBtn.addEventListener('click', () => openUserModal());
@@ -490,8 +501,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Constrói um card de demanda e retorna o elemento
     function updateLeaderSelects() {
-        // Filtro, demanda e cobertura — selects normais, ordenados alfabeticamente
+        // Filtro, demanda, cobertura e cotas — selects normais, ordenados alfabeticamente
         setupCoberturaLiderAutocomplete();
+        setupCotasLiderancaFilter();
         const selects = [filterLeader, demandaFilterLeader];
         selects.forEach(select => {
             if (!select) return;
@@ -583,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page'];
+            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
             if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {
@@ -600,6 +612,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (pageId === 'cotas-page') {
             loadCotasPage();
+        }
+        if (pageId === 'veiculos-page') {
+            loadVeiculosPage();
         }
     }
 });
