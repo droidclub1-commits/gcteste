@@ -106,6 +106,7 @@
                     <li><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
                     <li><a href="#cobertura" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Cobertura Eleitoral</a></li>
                     <li><a href="#cotas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>Cotas de Combustível</a></li>
+                    <li><a href="#veiculos" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9L2 10.5V17c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>Veículos</a></li>
                     <li><a href="#backup" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a></li>
                 </ul>
             </nav>
@@ -355,6 +356,15 @@
                             <button id="add-cota-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova Cota</button>
                         </div>
                     </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Filtrar por liderança:</label>
+                        <div class="relative w-72">
+                            <input type="text" id="cotas-filter-lider-search" class="w-full border border-gray-300 p-2 rounded-lg text-sm" placeholder="Todas as lideranças" autocomplete="off">
+                            <div id="cotas-filter-lider-dropdown" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+                            <input type="hidden" id="cotas-filter-lider" value="">
+                        </div>
+                        <button id="cotas-filter-clear-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700 underline">Limpar</button>
+                    </div>
                 </header>
                 <div class="flex-1 overflow-y-auto p-6">
                     <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
@@ -368,13 +378,55 @@
                                     <th class="px-4 py-3">Valor (R$)</th>
                                     <th class="px-4 py-3">Posto</th>
                                     <th class="px-4 py-3">Registado por</th>
+                                    <th id="cotas-th-acoes" class="px-4 py-3 hidden">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="cotas-tbody"></tbody>
                         </table>
                         <p id="cotas-empty" class="hidden text-center py-8 text-gray-400">Nenhuma cota registada ainda.</p>
                     </div>
-                    <p class="text-xs text-gray-400 mt-3">Mostrando os 500 registos mais recentes.</p>
+                    <p class="text-xs text-gray-400 mt-3">Mostrando os 500 registos mais recentes do filtro atual.</p>
+                </div>
+            </main>
+
+            <!-- PÁGINA VEÍCULOS -->
+            <main id="veiculos-page" class="page hidden flex flex-col flex-1 overflow-hidden">
+                <header class="bg-white p-6 border-b space-y-4">
+                    <div class="flex justify-between items-center gap-4">
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-800">Veículos</h1>
+                            <p class="text-sm text-gray-600">Veículos cadastrados pelos cidadãos, adesivação e acesso rápido ao abastecimento.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label for="veiculos-filter-tipo" class="text-sm font-medium text-gray-700 whitespace-nowrap">Tipo:</label>
+                            <select id="veiculos-filter-tipo" class="border border-gray-300 p-2 rounded-lg text-sm">
+                                <option value="">Todos (Carro + Moto)</option>
+                                <option value="Carro">Somente Carro</option>
+                                <option value="Moto">Somente Moto</option>
+                            </select>
+                        </div>
+                    </div>
+                </header>
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div id="veiculos-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-3">Cidadão</th>
+                                    <th class="px-4 py-3">Tipo</th>
+                                    <th class="px-4 py-3">Placa</th>
+                                    <th class="px-4 py-3">Modelo</th>
+                                    <th class="px-4 py-3">Cor</th>
+                                    <th class="px-4 py-3">Adesivado</th>
+                                    <th class="px-4 py-3">Liderança</th>
+                                    <th class="px-4 py-3">Abastecimento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="veiculos-tbody"></tbody>
+                        </table>
+                        <p id="veiculos-empty" class="hidden text-center py-8 text-gray-400">Nenhum veículo cadastrado ainda.</p>
+                    </div>
                 </div>
             </main>
 
@@ -494,41 +546,21 @@
                     </div>
                     <div id="children-details-container" class="mt-6 space-y-4"></div>
                     <div class="mt-6 border-t pt-4">
-                        <label class="block text-lg font-semibold text-gray-800 mb-3">Veículo</label>
+                        <label class="block text-lg font-semibold text-gray-800 mb-3">Veículos</label>
                         <div class="flex items-center gap-6">
                             <span class="text-sm font-medium text-gray-700">Possui veículo?</span>
                             <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-possui-veiculo" id="cidadao-possui-veiculo-sim" value="sim" class="h-4 w-4 text-blue-600"> Sim</label>
                             <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-possui-veiculo" id="cidadao-possui-veiculo-nao" value="nao" class="h-4 w-4 text-blue-600" checked> Não</label>
                         </div>
-                        <div id="veiculo-detalhes" class="hidden mt-4 space-y-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <div>
-                                <span class="block text-sm font-medium text-gray-700 mb-1">Tipo de veículo</span>
-                                <div class="flex items-center gap-6">
-                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-carro" value="Carro" class="h-4 w-4 text-blue-600"> Carro</label>
-                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-moto" value="Moto" class="h-4 w-4 text-blue-600"> Moto</label>
-                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-ambos" value="Ambos" class="h-4 w-4 text-blue-600"> Ambos</label>
-                                </div>
-                            </div>
-                            <div class="flex gap-4">
-                                <div id="veiculo-qtd-carro-group" class="hidden max-w-[180px]">
-                                    <label for="cidadao-qtd-carros" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de carros</label>
-                                    <input type="number" id="cidadao-qtd-carros" min="1" value="1" class="w-full border border-gray-300 p-2 rounded-lg">
-                                </div>
-                                <div id="veiculo-qtd-moto-group" class="hidden max-w-[180px]">
-                                    <label for="cidadao-qtd-motos" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de motos</label>
-                                    <input type="number" id="cidadao-qtd-motos" min="1" value="1" class="w-full border border-gray-300 p-2 rounded-lg">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="cidadao-veiculo-adesivado" class="h-4 w-4 text-green-600 border-gray-300 rounded">
-                                    <label for="cidadao-veiculo-adesivado" class="text-sm text-gray-700">Veículo já adesivado</label>
-                                </div>
-                                <div>
-                                    <label for="cidadao-placa-veiculo" class="block text-sm font-medium text-gray-700 mb-1">Placa (opcional)</label>
-                                    <input type="text" id="cidadao-placa-veiculo" maxlength="8" class="w-full border border-gray-300 p-2 rounded-lg uppercase" placeholder="ABC-1234">
-                                </div>
-                            </div>
+                        <div id="veiculo-detalhes" class="hidden mt-4 space-y-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <!-- Lista dinâmica: cada linha é um veículo (Tipo/Placa/Modelo/Cor/Adesivado).
+                                 "+ Adicionar veículo" cria quantas linhas forem necessárias, então dá pra
+                                 registar qualquer combinação (ex.: 2 carros + 1 moto) sem campo de "quantidade" fixo. -->
+                            <div id="veiculos-lista" class="space-y-3"></div>
+                            <button type="button" id="add-veiculo-btn" class="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Adicionar veículo
+                            </button>
                         </div>
                     </div>
                     <div class="mt-6 border-t pt-4">
@@ -588,16 +620,22 @@
                             <p><strong>Profissão:</strong> <span id="details-profissao"></span></p>
                             <p><strong>Local de Trabalho:</strong> <span id="details-local-trabalho"></span></p>
                             <p><strong>Indicado por:</strong> <span id="details-leader"></span></p>
-                            <p><strong>Veículo:</strong> <span id="details-veiculo"></span></p>
                             <div id="details-children" class="mt-2"></div>
                         </div>
                     </div>
                     <div class="mt-4 pt-4 border-t">
                         <div class="flex items-center justify-between mb-2">
-                            <h3 class="font-semibold text-gray-500 text-sm">COTAS DE COMBUSTÍVEL</h3>
-                            <span class="text-sm font-semibold text-gray-700" id="details-cotas-total"></span>
+                            <h3 class="font-semibold text-gray-500 text-sm">VEÍCULOS</h3>
+                            <span class="text-xs text-gray-500" id="details-veiculo-resumo"></span>
                         </div>
-                        <div id="details-cotas-list" class="space-y-1 text-sm text-gray-700 max-h-32 overflow-y-auto"></div>
+                        <div id="details-veiculos-list" class="space-y-1"></div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-500 text-sm">COTAS DE COMBUSTÍVEL</h3>
+                        <button id="details-view-cotas-btn" type="button" class="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Ver histórico de abastecimento
+                        </button>
                     </div>
                 </div>
                 <div class="bg-gray-50 p-4 flex flex-wrap justify-end gap-4 rounded-b-lg">
@@ -612,7 +650,7 @@
 
         <div id="cota-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-40 overflow-y-auto p-4">
             <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-lg transform transition-all scale-95 opacity-0 my-auto" id="cota-modal-content">
-                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Nova Cota de Combustível</h2><button type="button" id="close-cota-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div>
+                <div class="flex justify-between items-center mb-6"><h2 id="cota-modal-title" class="text-2xl font-bold">Nova Cota de Combustível</h2><button type="button" id="close-cota-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div>
                 <form id="cota-form" class="space-y-4">
                     <div>
                         <label for="cota-cidadao-search" class="block text-sm font-medium text-gray-700 mb-1">Cidadão *</label>
@@ -636,6 +674,36 @@
                         <button type="submit" id="save-cota-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2">Salvar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Histórico de abastecimento de um cidadão — modal separado (não mais
+             embutido na ficha), com botões de baixar CSV e imprimir. -->
+        <div id="cota-history-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 overflow-y-auto p-4">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl transform transition-all scale-95 opacity-0 my-auto" id="cota-history-modal-content">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Histórico de Abastecimento</h2>
+                        <p class="text-sm text-gray-600" id="cota-history-cidadao-nome"></p>
+                    </div>
+                    <button type="button" id="close-cota-history-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+                </div>
+                <div class="p-6 max-h-[60vh] overflow-y-auto">
+                    <div id="cota-history-list" class="overflow-x-auto"></div>
+                </div>
+                <div class="bg-gray-50 p-4 flex flex-wrap items-center justify-between gap-4 rounded-b-lg">
+                    <span class="text-sm font-semibold text-gray-700" id="cota-history-total"></span>
+                    <div class="flex gap-3">
+                        <button type="button" id="cota-history-print-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            Imprimir
+                        </button>
+                        <button type="button" id="cota-history-download-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Baixar CSV
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
