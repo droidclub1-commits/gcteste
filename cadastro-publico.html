@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Cidadão — Cadastro Rápido</title>
+    <link rel="icon" type="image/x-icon" href="favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon/android-chrome-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <!-- reaproveita o mesmo style.css do sistema principal (cores sky/slate + spinner) -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100">
+    <div id="toast-container" class="fixed top-5 right-5 z-[1000] space-y-2"></div>
+
+    <!-- ── Link de liderança inválido/expirado ───────────────────────
+         Só aparece quando a página é aberta com ?leader=<id> e o id não
+         corresponde a nenhuma liderança válida (link errado/removido). ── -->
+    <div id="invalid-link-page" class="hidden flex flex-col items-center justify-center h-screen bg-gray-200 px-4">
+        <div class="w-full max-w-md p-8 space-y-4 bg-white rounded-lg shadow-md text-center">
+            <h2 class="text-xl font-bold text-gray-900">Link inválido</h2>
+            <p class="text-sm text-gray-600">Este link de cadastro não é válido ou expirou. Confira com quem te enviou o link se ele está correto.</p>
+        </div>
+    </div>
+
+    <!-- ── Portão de senha (fluxo antigo, sem liderança na URL) ───────── -->
+    <div id="gate-page" class="flex flex-col items-center justify-center h-screen bg-gray-200 px-4">
+        <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+            <div class="text-center">
+                <div class="mx-auto w-16 h-16">
+<svg viewBox="0 0 40 40" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="gcLogoGradPubLogin" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#0C3E85"/>
+                                <stop offset="100%" stop-color="#00A86B"/>
+                            </linearGradient>
+                            <clipPath id="gcLogoClipPubLogin"><rect x="0" y="0" width="40" height="40" rx="10"/></clipPath>
+                        </defs>
+                        <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#gcLogoGradPubLogin)"/>
+                        <g clip-path="url(#gcLogoClipPubLogin)">
+                            <circle cx="20" cy="15" r="6" fill="#FFFFFF"/>
+                            <path d="M7 34c0-7.5 5.5-12 13-12s13 4.5 13 12" fill="#FFFFFF"/>
+                        </g>
+                        <circle cx="30" cy="30" r="8" fill="#FFB300" stroke="#FFFFFF" stroke-width="1.5"/>
+                        <path d="M26.7 30.2l2.2 2.2 4.1-4.5" stroke="#0C3E85" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2 class="mt-6 text-2xl font-bold text-gray-900">Cadastro Rápido</h2>
+                <p class="mt-2 text-sm text-gray-600">Digite a chave de acesso para cadastrar um cidadão.</p>
+            </div>
+            <form id="gate-form" class="mt-8 space-y-4">
+                <div>
+                    <label for="gate-password" class="sr-only">Chave de acesso</label>
+                    <input id="gate-password" type="password" required autocomplete="off"
+                        class="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="Chave de acesso">
+                </div>
+                <button type="submit" id="gate-btn"
+                    class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Entrar
+                </button>
+            </form>
+        </div>
+        <p class="mt-8 text-xs text-gray-500 font-medium">GESTOR CIDADÃO© — cadastro público</p>
+    </div>
+
+    <!-- ── Formulário de cadastro (só aparece após a senha certa) ────── -->
+    <div id="form-page" class="hidden min-h-screen py-8 px-4">
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6 md:p-8">
+            <div class="text-center mb-6">
+                <div class="mx-auto w-12 h-12 mb-3">
+<svg viewBox="0 0 40 40" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="gcLogoGradPubHeader" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#0C3E85"/>
+                                <stop offset="100%" stop-color="#00A86B"/>
+                            </linearGradient>
+                            <clipPath id="gcLogoClipPubHeader"><rect x="0" y="0" width="40" height="40" rx="10"/></clipPath>
+                        </defs>
+                        <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#gcLogoGradPubHeader)"/>
+                        <g clip-path="url(#gcLogoClipPubHeader)">
+                            <circle cx="20" cy="15" r="6" fill="#FFFFFF"/>
+                            <path d="M7 34c0-7.5 5.5-12 13-12s13 4.5 13 12" fill="#FFFFFF"/>
+                        </g>
+                        <circle cx="30" cy="30" r="8" fill="#FFB300" stroke="#FFFFFF" stroke-width="1.5"/>
+                        <path d="M26.7 30.2l2.2 2.2 4.1-4.5" stroke="#0C3E85" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">Cadastro de Cidadão</h1>
+                <p class="text-sm text-gray-600">Preencha os dados abaixo. Você pode cadastrar quantas pessoas quiser nesta sessão.</p>
+            </div>
+
+            <!-- Só aparece quando a página foi aberta pelo link exclusivo de uma
+                 liderança (?leader=<id>) — o vínculo já fica automático, não
+                 precisa mais do campo "Indicado por" nem de senha. -->
+            <div id="leader-banner" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 text-center">
+                Cadastro via indicação de: <strong id="leader-banner-name"></strong>
+            </div>
+
+            <form id="cidadao-form-public" class="space-y-6">
+                <!-- honeypot anti-bot: campo escondido que humanos nunca preenchem -->
+                <div class="hidden" aria-hidden="true">
+                    <label for="website">Não preencher</label>
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-gray-800 border-b pb-2 uppercase tracking-wide">Dados Pessoais</h3>
+                        <div>
+                            <label for="c-name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                            <input type="text" id="c-name" required class="w-full border border-gray-300 p-2 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="c-cpf" class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                            <input type="text" id="c-cpf" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="000.000.000-00">
+                        </div>
+                        <div>
+                            <label for="c-dob" class="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento</label>
+                            <input type="date" id="c-dob" class="w-full border border-gray-300 p-2 rounded-lg">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-gray-800 border-b pb-2 uppercase tracking-wide">Contato e Perfil</h3>
+                        <div>
+                            <label for="c-phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                            <div class="flex items-center">
+                                <input type="tel" id="c-phone" class="w-full border border-gray-300 p-2 rounded-l-lg" placeholder="(00) 00000-0000">
+                                <div class="flex items-center pl-3 pr-2 border-t border-b border-r rounded-r-lg h-full">
+                                    <input id="c-whatsapp" type="checkbox" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                    <label for="c-whatsapp" class="ml-2 text-sm text-gray-600">WhatsApp</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="c-sexo" class="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
+                            <select id="c-sexo" class="w-full border border-gray-300 p-2 rounded-lg bg-white">
+                                <option value="Não Informar">Não Informar</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Feminino">Feminino</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-800 border-b pb-2 uppercase tracking-wide mb-4">Filiação</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="c-nome-mae" class="block text-sm font-medium text-gray-700 mb-1">Nome da Mãe</label>
+                            <input type="text" id="c-nome-mae" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Nome completo">
+                        </div>
+                        <div>
+                            <label for="c-nome-pai" class="block text-sm font-medium text-gray-700 mb-1">Nome do Pai</label>
+                            <input type="text" id="c-nome-pai" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Nome completo">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-800 border-b pb-2 uppercase tracking-wide mb-4">Endereço</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label for="c-cep" class="block text-sm font-medium text-gray-700 mb-1">CEP</label><input type="text" id="c-cep" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="00000-000"></div>
+                        <div class="md:col-span-2"><label for="c-logradouro" class="block text-sm font-medium text-gray-700 mb-1">Logradouro</label><input type="text" id="c-logradouro" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="c-numero" class="block text-sm font-medium text-gray-700 mb-1">Nº</label><input type="text" id="c-numero" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div class="md:col-span-2"><label for="c-complemento" class="block text-sm font-medium text-gray-700 mb-1">Complemento</label><input type="text" id="c-complemento" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="c-bairro" class="block text-sm font-medium text-gray-700 mb-1">Bairro</label><input type="text" id="c-bairro" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="c-cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label><input type="text" id="c-cidade" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="c-estado" class="block text-sm font-medium text-gray-700 mb-1">UF</label><input type="text" id="c-estado" maxlength="2" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                    </div>
+                </div>
+
+                <div id="indicado-por-group">
+                    <label for="c-indicadopor" class="block text-sm font-medium text-gray-700 mb-1">Indicado por</label>
+                    <input type="text" id="c-indicadopor" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Ex: Sd Fulano">
+                    <p class="text-xs text-gray-500 mt-1">Essa informação será salva junto ao campo Complemento do endereço.</p>
+                </div>
+
+                <div>
+                    <label for="c-escola" class="block text-sm font-medium text-gray-700 mb-1">Escola</label>
+                    <input type="text" id="c-escola" class="w-full border border-gray-300 p-2 rounded-lg">
+                </div>
+                
+                <!-- ── Consentimento LGPD ──────────────────────────────────────
+                     Explica a finalidade da coleta e exige aceite explícito antes
+                     de liberar o botão Cadastrar. O aceite (com data/hora) fica
+                     registado no cidadão — ver lgpd_consent_at no backend. -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                    <p class="text-xs text-gray-600 leading-relaxed">
+                        Usaremos os dados deste cadastro para fins de mobilização e organização política —
+                        por exemplo, para enviar lembretes e organizar o apoio da sua seção no dia da votação.
+                        Seus dados não serão vendidos nem repassados a terceiros fora dessa finalidade.
+                        Saiba mais na nossa <a href="privacidade.html" target="_blank" rel="noopener" class="text-blue-600 underline font-medium">Política de Privacidade</a>.
+                    </p>
+                    <div class="flex items-start gap-2">
+                        <input type="checkbox" id="c-lgpd-consent" required class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                        <label for="c-lgpd-consent" class="text-sm text-gray-700">
+                            Li e concordo com a coleta e o uso dos meus dados conforme descrito acima e na Política de Privacidade. *
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t">
+                    <button type="submit" id="save-btn-public"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg flex items-center justify-center gap-2">
+                        Cadastrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="cadastro-publico.js"></script>
+</body>
+                            </html>

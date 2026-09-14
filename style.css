@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --gc-blue: #0C3E85;
+  --gc-blue-dark: #0A3470;
+  --gc-green: #00A86B;
+  --gc-gold: #FFB300;
+  --gc-gray: #F4F6F9;
+  --gc-ink: #142235;
+  --gc-muted: #64748b;
+  --gc-border: #e3e9f1;
+  --gc-surface: #ffffff;
+  --gc-shadow: 0 10px 30px rgba(15, 42, 74, .07);
+  --gc-radius: 16px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font-family: 'Inter', sans-serif; color: var(--gc-ink); background: var(--gc-gray); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; }
+/* Tailwind's .h-screen = height:100vh, que em navegadores mobile é calculado
+   de forma inconsistente com a barra de endereço (some/aparece ao rolar),
+   sobrando pouco espaço real de scroll. 100dvh (dynamic viewport height) já
+   é suportado nos navegadores mobile atuais e resolve isso; navegadores sem
+   suporte simplesmente ignoram a segunda declaração e mantêm o 100vh normal. */
+.h-screen { height: 100vh; height: 100dvh; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .65; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Auth / gate */
+#login-page, #gate-page { position: relative; min-height: 100vh; padding: 28px 20px; background: radial-gradient(circle at 15% 15%, rgba(0,168,107,.12), transparent 32%), radial-gradient(circle at 90% 90%, rgba(12,62,133,.14), transparent 34%), var(--gc-gray); }
+#login-page::before, #gate-page::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,255,255,.45), transparent 45%); }
+#login-page > div, #gate-page > div { position: relative; z-index: 1; width: min(100%, 440px); padding: 38px; border: 1px solid rgba(255,255,255,.9); border-radius: 24px; background: rgba(255,255,255,.94); box-shadow: 0 24px 70px rgba(15,42,74,.14); }
+#login-page h2, #gate-page h2 { letter-spacing: -.04em; color: var(--gc-blue); }
+#login-page p, #gate-page p { color: var(--gc-muted); }
+#login-form, #gate-form { margin-top: 30px; }
+#login-form input, #gate-form input { display: block; width: 100%; min-height: 50px; padding: 0 15px; border: 1px solid var(--gc-border); border-radius: 11px !important; background: #fbfcfe; transition: .2s ease; }
+#login-form input + input { margin-top: 10px; border-radius: 11px !important; }
+#login-form input:focus, #gate-form input:focus { outline: none; border-color: var(--gc-blue); box-shadow: 0 0 0 4px rgba(12,62,133,.12); background: white; }
+#login-btn, #gate-btn { min-height: 50px; margin-top: 2px; border: 0; border-radius: 11px; background: var(--gc-blue) !important; box-shadow: 0 8px 18px rgba(12,62,133,.2); transition: transform .2s, background .2s; }
+#login-btn:hover, #gate-btn:hover { background: var(--gc-blue-dark) !important; transform: translateY(-1px); }
+
+/* App shell */
+#app-container { min-height: 100vh; background: var(--gc-gray); }
+#app-container > aside { width: 264px; flex: 0 0 264px; background: #0F2A4A !important; box-shadow: 10px 0 30px rgba(15,42,74,.08); z-index: 20; }
+#logo-btn { min-height: 82px; padding: 18px 22px !important; border-bottom: 1px solid rgba(255,255,255,.1) !important; }
+#logo-btn span { font-size: 14px; letter-spacing: .055em; }
+#sidebar-nav { padding: 22px 14px !important; }
+#sidebar-nav ul { display: grid; gap: 6px; }
+#sidebar-nav a { min-height: 46px; color: rgba(255,255,255,.7); font-size: 13px; letter-spacing: .01em; transition: .2s ease; }
+#sidebar-nav a:hover, #sidebar-nav a.bg-slate-900 { color: #fff; background: rgba(255,255,255,.11) !important; }
+#sidebar-nav a.bg-slate-900 { box-shadow: inset 3px 0 0 var(--gc-gold); }
+#logout-btn { min-height: 44px; background: rgba(220,38,38,.84) !important; font-size: 13px; }
+#logout-btn:hover { background: #dc2626 !important; }
+#app-container > .flex-1 { min-width: 0; }
+
+/* Shared content headers and pages */
+.page > header, #app-container main > header { padding: 27px 34px !important; border-bottom: 1px solid var(--gc-border) !important; background: rgba(255,255,255,.9) !important; }
+.page > header h1, #app-container main > header h1 { margin: 0; color: var(--gc-ink); font-size: clamp(1.3rem, 2vw, 1.7rem); letter-spacing: -.035em; }
+.page > header p, #app-container main > header p { margin-top: 6px; color: var(--gc-muted); font-size: 13px; }
+.page > div:not(.fixed), #dashboard-page > div { padding: 28px 34px !important; }
+.bg-white { border: 1px solid var(--gc-border); border-radius: var(--gc-radius) !important; box-shadow: var(--gc-shadow); }
+.bg-white h3 { color: var(--gc-ink) !important; letter-spacing: -.02em; }
+.shadow-sm { box-shadow: var(--gc-shadow) !important; }
+
+/* Dashboard */
+#dashboard-page .grid { align-items: start; }
+#dashboard-page .text-4xl { font-size: 2.35rem; letter-spacing: -.06em; }
+#dashboard-page .bg-white:hover { box-shadow: 0 14px 35px rgba(15,42,74,.11); }
+#dashboard-page canvas { max-width: 100%; }
+
+/* Forms, tables, filters and cards */
+input, select, textarea { border-color: var(--gc-border) !important; border-radius: 10px !important; background: #fff; transition: border-color .2s, box-shadow .2s; }
+input:focus, select:focus, textarea:focus { outline: none !important; border-color: var(--gc-blue) !important; box-shadow: 0 0 0 4px rgba(12,62,133,.1) !important; }
+.bg-blue-600, .bg-blue-500, .bg-indigo-600 { background-color: var(--gc-blue) !important; }
+.hover\:bg-blue-700:hover, .hover\:bg-blue-600:hover, .hover\:bg-indigo-700:hover { background-color: var(--gc-blue-dark) !important; }
+.text-blue-600, .text-blue-800 { color: var(--gc-blue) !important; }
+.focus\:ring-indigo-500:focus, .focus\:ring-blue-500:focus { --tw-ring-color: var(--gc-blue) !important; }
+.focus\:border-indigo-500:focus, .focus\:border-blue-500:focus { border-color: var(--gc-blue) !important; }
+.bg-blue-100 { background-color: #E4EAF4 !important; }
+.status-badge { padding: .35rem .7rem; border-radius: 999px; font-size: .7rem; font-weight: 700; letter-spacing: .04em; }
+.status-pending { background: #fff5cc; color: #a66f00; }
+.status-inprogress { background: #e4eaf4; color: var(--gc-blue); }
+.status-completed { background: #dcf7eb; color: #08794e; }
+
+/* Modals and notifications */
+.fixed.inset-0 { backdrop-filter: blur(4px); }
+.fixed.inset-0 > div { border-radius: 18px !important; box-shadow: 0 25px 80px rgba(15,42,74,.2); }
+#toast-container { top: 22px !important; right: 22px !important; }
+#toast-container > div { border-radius: 12px; box-shadow: 0 12px 30px rgba(15,42,74,.16); }
+.spinner { border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; width: 17px; height: 17px; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#map { height: 100%; width: 100%; }
+.z-\[1000\] { z-index: 1000; }
+
+/* Public registration */
+#form-page { background: radial-gradient(circle at 5% 0%, rgba(0,168,107,.08), transparent 30%), var(--gc-gray); }
+#form-page > div { max-width: 980px; border-radius: 22px !important; padding: 36px !important; }
+#form-page h1 { color: var(--gc-blue); letter-spacing: -.04em; }
+#form-page h3 { color: var(--gc-blue); border-color: var(--gc-border); font-size: .72rem; letter-spacing: .1em; }
+#form-page label { color: #334155; font-size: .78rem; font-weight: 600; }
+#form-page input, #form-page select { min-height: 44px; padding: 0 13px; }
+#save-btn-public { min-height: 46px; border-radius: 11px; background: var(--gc-blue) !important; box-shadow: 0 8px 18px rgba(12,62,133,.16); }
+#save-btn-public:hover { background: var(--gc-blue-dark) !important; }
+
+@media (max-width: 900px) {
+  #app-container > aside { width: 224px; flex-basis: 224px; }
+  .page > header, #app-container main > header { padding: 22px 24px !important; }
+  .page > div:not(.fixed), #dashboard-page > div { padding: 22px 24px !important; }
+}
+
+@media (max-width: 700px) {
+  #login-page > div, #gate-page > div { padding: 28px 22px; }
+  /* NOTA: removido "display: block !important" daqui — essa regra sobrescrevia
+     (por causa do !important) o display:none/flex que o JS aplica inline no
+     login-page/logout, fazendo o app-container (e o menu hambúrguer dentro dele)
+     ficar sempre visível no mobile mesmo antes do login. O JS já controla
+     display:flex/none via appContainer.style.display; aqui só cuidamos do
+     layout interno (aside como drawer) quando ele estiver visível. */
+  #app-container > aside { position: fixed; inset: 0 auto 0 0; width: min(82vw, 290px); transform: translateX(-102%); transition: transform .25s ease; box-shadow: 18px 0 40px rgba(15,42,74,.25); }
+  #app-container.menu-open > aside { transform: translateX(0); }
+  #app-container > .flex-1 { min-height: 100vh; width: 100%; }
+  #app-container > .flex-1::before { content: ''; display: block; position: fixed; inset: 0; background: rgba(15,42,74,.42); z-index: 15; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #app-container.menu-open > .flex-1::before { opacity: 1; pointer-events: auto; }
+  .page > header, #app-container main > header { padding: 18px 18px !important; }
+  .page > div:not(.fixed), #dashboard-page > div { padding: 18px !important; }
+  #dashboard-page .grid { gap: 14px; }
+  #form-page { padding: 14px !important; }
+  #form-page > div { padding: 22px 17px !important; }
+  #form-page .grid { gap: 22px; }
+  #toast-container { top: 12px !important; left: 12px; right: 12px !important; }
+  #toast-container > div { width: 100%; }
+
+  /* Cabeçalhos de Cidadãos/Utilizadores: título + botões de ação ficavam
+     numa única linha "flex" sem quebra (flex-wrap: nowrap por padrão) dentro
+     de um container com overflow-hidden. No desktop cabe tudo; no mobile os
+     botões que não cabem ficavam cortados (invisíveis) em vez de aparecer
+     espremidos. Aqui deixamos essa linha quebrar e os botões ocuparem a
+     largura toda, em vez de vazar pra fora do cabeçalho. */
+  #cidadaos-page > header > .flex.justify-between,
+  #demandas-page > header > .flex.justify-between,
+  #cobertura-page > header > .flex.justify-between,
+  #utilizadores-page > header > .flex.justify-between {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  #cidadaos-page > header > .flex.justify-between > div:last-child {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px !important;
+  }
+  #cidadaos-page > header > .flex.justify-between > div:last-child button {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  #demandas-page > header > .flex.justify-between > #add-demanda-geral-btn,
+  #cobertura-page > header > .flex.justify-between > #cobertura-excel-btn,
+  #utilizadores-page > header > .flex.justify-between > #add-user-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 701px) { #mobile-menu-btn { display: none !important; } }
+#mobile-menu-btn { position: fixed; top: 14px; left: 14px; z-index: 30; width: 42px; height: 42px; border: 1px solid var(--gc-border); border-radius: 12px; color: var(--gc-blue); background: #fff; box-shadow: 0 8px 18px rgba(15,42,74,.1); }
+#mobile-menu-btn svg { width: 20px; height: 20px; }
+
+/* ── Filtros recolhíveis (mobile) ────────────────────────────────────
+   Nas páginas com cabeçalho + filtros (Cidadãos/Demandas/Cobertura),
+   o cabeçalho sozinho podia tomar ~75% da tela no celular. O grupo de
+   filtros fica escondido por padrão no mobile (classe .filters-collapsed,
+   só tem efeito abaixo de 768px — em telas maiores os filtros sempre
+   aparecem, independente do estado do botão) até o utilizador tocar no
+   botão "Filtros" pra abrir. */
+@media (max-width: 767px) {
+  .filters-collapsed { display: none !important; }
+}
+.filters-toggle-icon { transition: transform .2s ease; }
+[aria-expanded="true"] .filters-toggle-icon { transform: rotate(180deg); }
