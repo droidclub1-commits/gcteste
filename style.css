@@ -139,18 +139,21 @@ input:focus, select:focus, textarea:focus { outline: none !important; border-col
      espremidos. Aqui deixamos essa linha quebrar e os botões ocuparem a
      largura toda, em vez de vazar pra fora do cabeçalho. */
   #cidadaos-page > header > .flex.justify-between,
+  #cotas-page > header > .flex.justify-between,
   #demandas-page > header > .flex.justify-between,
   #cobertura-page > header > .flex.justify-between,
   #utilizadores-page > header > .flex.justify-between {
     flex-wrap: wrap;
     row-gap: 10px;
   }
-  #cidadaos-page > header > .flex.justify-between > div:last-child {
+  #cidadaos-page > header > .flex.justify-between > div:last-child,
+  #cotas-page > header > .flex.justify-between > div:last-child {
     flex-wrap: wrap;
     width: 100%;
     gap: 8px !important;
   }
-  #cidadaos-page > header > .flex.justify-between > div:last-child button {
+  #cidadaos-page > header > .flex.justify-between > div:last-child button,
+  #cotas-page > header > .flex.justify-between > div:last-child button {
     flex: 1 1 calc(50% - 8px);
     justify-content: center;
     padding-left: 10px !important;
