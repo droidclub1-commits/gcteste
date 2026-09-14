@@ -105,6 +105,7 @@
                     <li><a href="#mapa" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Mapa</a></li>
                     <li><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
                     <li><a href="#cobertura" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Cobertura Eleitoral</a></li>
+                    <li><a href="#cotas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>Cotas de Combustível</a></li>
                     <li><a href="#backup" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a></li>
                 </ul>
             </nav>
@@ -341,6 +342,42 @@
                 </div>
             </main>
 
+            <!-- PÁGINA COTAS DE COMBUSTÍVEL -->
+            <main id="cotas-page" class="page hidden flex flex-col flex-1 overflow-hidden">
+                <header class="bg-white p-6 border-b space-y-4">
+                    <div class="flex justify-between items-center gap-4">
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-800">Cotas de Combustível</h1>
+                            <p class="text-sm text-gray-600">Registo e histórico de cotas de combustível entregues aos cidadãos.</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <button id="cotas-relatorio-lideranca-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Relatório por Liderança</button>
+                            <button id="add-cota-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova Cota</button>
+                        </div>
+                    </div>
+                </header>
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-3">Data</th>
+                                    <th class="px-4 py-3">Cidadão</th>
+                                    <th class="px-4 py-3">Liderança</th>
+                                    <th class="px-4 py-3">Litros</th>
+                                    <th class="px-4 py-3">Valor (R$)</th>
+                                    <th class="px-4 py-3">Posto</th>
+                                    <th class="px-4 py-3">Registado por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cotas-tbody"></tbody>
+                        </table>
+                        <p id="cotas-empty" class="hidden text-center py-8 text-gray-400">Nenhuma cota registada ainda.</p>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-3">Mostrando os 500 registos mais recentes.</p>
+                </div>
+            </main>
+
             <!-- PÁGINA BACKUP -->
             <main id="backup-page" class="page hidden flex flex-col flex-1 overflow-hidden">
                 <header class="bg-white p-6 border-b flex-shrink-0">
@@ -457,6 +494,44 @@
                     </div>
                     <div id="children-details-container" class="mt-6 space-y-4"></div>
                     <div class="mt-6 border-t pt-4">
+                        <label class="block text-lg font-semibold text-gray-800 mb-3">Veículo</label>
+                        <div class="flex items-center gap-6">
+                            <span class="text-sm font-medium text-gray-700">Possui veículo?</span>
+                            <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-possui-veiculo" id="cidadao-possui-veiculo-sim" value="sim" class="h-4 w-4 text-blue-600"> Sim</label>
+                            <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-possui-veiculo" id="cidadao-possui-veiculo-nao" value="nao" class="h-4 w-4 text-blue-600" checked> Não</label>
+                        </div>
+                        <div id="veiculo-detalhes" class="hidden mt-4 space-y-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div>
+                                <span class="block text-sm font-medium text-gray-700 mb-1">Tipo de veículo</span>
+                                <div class="flex items-center gap-6">
+                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-carro" value="Carro" class="h-4 w-4 text-blue-600"> Carro</label>
+                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-moto" value="Moto" class="h-4 w-4 text-blue-600"> Moto</label>
+                                    <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="cidadao-tipo-veiculo" id="cidadao-tipo-veiculo-ambos" value="Ambos" class="h-4 w-4 text-blue-600"> Ambos</label>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div id="veiculo-qtd-carro-group" class="hidden max-w-[180px]">
+                                    <label for="cidadao-qtd-carros" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de carros</label>
+                                    <input type="number" id="cidadao-qtd-carros" min="1" value="1" class="w-full border border-gray-300 p-2 rounded-lg">
+                                </div>
+                                <div id="veiculo-qtd-moto-group" class="hidden max-w-[180px]">
+                                    <label for="cidadao-qtd-motos" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de motos</label>
+                                    <input type="number" id="cidadao-qtd-motos" min="1" value="1" class="w-full border border-gray-300 p-2 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="cidadao-veiculo-adesivado" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                    <label for="cidadao-veiculo-adesivado" class="text-sm text-gray-700">Veículo já adesivado</label>
+                                </div>
+                                <div>
+                                    <label for="cidadao-placa-veiculo" class="block text-sm font-medium text-gray-700 mb-1">Placa (opcional)</label>
+                                    <input type="text" id="cidadao-placa-veiculo" maxlength="8" class="w-full border border-gray-300 p-2 rounded-lg uppercase" placeholder="ABC-1234">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t pt-4">
                         <label class="block text-lg font-semibold text-gray-800 mb-2">Foto do Perfil</label>
                         <div class="mt-1 flex rounded-md shadow-sm">
                             <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">URL</span>
@@ -513,8 +588,16 @@
                             <p><strong>Profissão:</strong> <span id="details-profissao"></span></p>
                             <p><strong>Local de Trabalho:</strong> <span id="details-local-trabalho"></span></p>
                             <p><strong>Indicado por:</strong> <span id="details-leader"></span></p>
+                            <p><strong>Veículo:</strong> <span id="details-veiculo"></span></p>
                             <div id="details-children" class="mt-2"></div>
                         </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-semibold text-gray-500 text-sm">COTAS DE COMBUSTÍVEL</h3>
+                            <span class="text-sm font-semibold text-gray-700" id="details-cotas-total"></span>
+                        </div>
+                        <div id="details-cotas-list" class="space-y-1 text-sm text-gray-700 max-h-32 overflow-y-auto"></div>
                     </div>
                 </div>
                 <div class="bg-gray-50 p-4 flex flex-wrap justify-end gap-4 rounded-b-lg">
@@ -524,6 +607,35 @@
                     <button id="details-share-location-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Partilhar Localização</button>
                     <button id="details-view-map-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Ver no Mapa</button>
                 </div>
+            </div>
+        </div>
+
+        <div id="cota-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-40 overflow-y-auto p-4">
+            <div class="bg-white rounded-lg p-8 shadow-2xl w-full max-w-lg transform transition-all scale-95 opacity-0 my-auto" id="cota-modal-content">
+                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Nova Cota de Combustível</h2><button type="button" id="close-cota-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div>
+                <form id="cota-form" class="space-y-4">
+                    <div>
+                        <label for="cota-cidadao-search" class="block text-sm font-medium text-gray-700 mb-1">Cidadão *</label>
+                        <div class="relative">
+                            <input type="text" id="cota-cidadao-search" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="Digite o nome para buscar..." autocomplete="off" required>
+                            <div id="cota-cidadao-dropdown" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+                            <input type="hidden" id="cota-cidadao-id" value="">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label for="cota-data" class="block text-sm font-medium text-gray-700 mb-1">Data *</label><input type="date" id="cota-data" required class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="cota-posto" class="block text-sm font-medium text-gray-700 mb-1">Posto</label><input type="text" id="cota-posto" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label for="cota-litros" class="block text-sm font-medium text-gray-700 mb-1">Litros</label><input type="number" step="0.01" min="0" id="cota-litros" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                        <div><label for="cota-valor" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label><input type="number" step="0.01" min="0" id="cota-valor" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                    </div>
+                    <div><label for="cota-observacao" class="block text-sm font-medium text-gray-700 mb-1">Observação</label><textarea id="cota-observacao" rows="2" class="w-full border border-gray-300 p-2 rounded-lg"></textarea></div>
+                    <div class="flex justify-end gap-4 pt-4 border-t">
+                        <button type="button" id="cancel-cota-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
+                        <button type="submit" id="save-cota-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2">Salvar</button>
+                    </div>
+                </form>
             </div>
         </div>
 
