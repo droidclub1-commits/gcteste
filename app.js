@@ -9,8 +9,12 @@ import {
     updateBairroFilter, clearCidadaoFilters,
     openCidadaoModal, closeCidadaoModal, updateChildrenInputs,
     handleCEPBlur, openDetailsModal, closeDetailsModal,
-    setupLeaderAutocomplete
+    setupLeaderAutocomplete, setupVeiculoToggle
 } from './js/cidadaos.js';
+import {
+    resetCotas, openCotaModal, closeCotaModal, handleCotaFormSubmit,
+    loadCotasPage, renderCotasHistoryFor, generateCotasPorLiderancaExcel
+} from './js/cotas.js';
 import {
     initDemandas,
     handleDemandaFormSubmit, openDemandaDetailsModal,
@@ -124,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -212,7 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
             onOpenDemanda: (cidadaoId) => openDemandaModal(cidadaoId),
             onRequestDelete: (id, type) => requestDelete(id, type),
             onLeadersChanged: () => updateLeaderSelects(),
-            onOpenMap: (cidadaosToPlot) => openMapModal(cidadaosToPlot)
+            onOpenMap: (cidadaosToPlot) => openMapModal(cidadaosToPlot),
+            onRenderCotas: (cidadao) => renderCotasHistoryFor(cidadao)
         });
         initDemandas({
             onRequestDelete: (id, type) => requestDelete(id, type),
@@ -330,6 +335,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Backup
         document.getElementById('backup-json-btn')?.addEventListener('click', () => backupData('json'));
         document.getElementById('backup-csv-btn')?.addEventListener('click', () => backupData('csv'));
+        // Cotas de Combustível
+        document.getElementById('add-cota-btn')?.addEventListener('click', () => openCotaModal());
+        document.getElementById('close-cota-modal-btn')?.addEventListener('click', closeCotaModal);
+        document.getElementById('cancel-cota-btn')?.addEventListener('click', closeCotaModal);
+        document.getElementById('cota-form')?.addEventListener('submit', handleCotaFormSubmit);
+        document.getElementById('cotas-relatorio-lideranca-btn')?.addEventListener('click', generateCotasPorLiderancaExcel);
+        // Toggle da seção Veículo no modal de cidadão (Sim/Não → Tipo → quantidade)
+        setupVeiculoToggle();
         const addUserBtn = document.getElementById('add-user-btn');
         if (addUserBtn) addUserBtn.addEventListener('click', () => openUserModal());
         const closeUserModalBtn = document.getElementById('close-user-modal-btn');
@@ -570,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page'];
+            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page'];
             if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {
@@ -584,6 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (pageId === 'utilizadores-page') {
             loadUsers();
+        }
+        if (pageId === 'cotas-page') {
+            loadCotasPage();
         }
     }
 });
