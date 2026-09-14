@@ -26,14 +26,14 @@ let _onOpenDemanda    = () => {};
 let _onRequestDelete  = () => {};
 let _onLeadersChanged = () => {};
 let _onOpenMap        = () => {};
-let _onRenderCotas    = () => {};
+let _onOpenCotaHistory = () => {};
 
-export function initCidadaos({ onOpenDemanda, onRequestDelete, onLeadersChanged, onOpenMap, onRenderCotas } = {}) {
+export function initCidadaos({ onOpenDemanda, onRequestDelete, onLeadersChanged, onOpenMap, onOpenCotaHistory } = {}) {
     if (onOpenDemanda)    _onOpenDemanda    = onOpenDemanda;
     if (onRequestDelete)  _onRequestDelete  = onRequestDelete;
     if (onLeadersChanged) _onLeadersChanged = onLeadersChanged;
     if (onOpenMap)        _onOpenMap        = onOpenMap;
-    if (onRenderCotas)    _onRenderCotas    = onRenderCotas;
+    if (onOpenCotaHistory) _onOpenCotaHistory = onOpenCotaHistory;
 }
 
 // ── Estado de paginação/busca server-side (encapsulado) ────────────
@@ -246,13 +246,16 @@ export async function handleCidadaoFormSubmit(e) {
             localtrabalho: v($('cidadao-local-trabalho').value),
             nome_mae: v($('cidadao-nome-mae').value),
             nome_pai: v($('cidadao-nome-pai').value),
-            ...getVeiculoData(),
             photourl: photoUrl || null,
             latitude: lat,
             longitude: long,
             updated_at: new Date().toISOString(),
             user_id: state.user.id
         };
+        // Veículos vivem numa tabela própria (1:N) — lidos do form à parte
+        // e sincronizados depois de saber o id definitivo do cidadão.
+        const veiculosData = getVeiculoData();
+        let cidadaoIdSalvo = currentEditingId;
         if (currentEditingId) {
             const { error } = await sb
                 .from('cidadaos')
@@ -262,12 +265,16 @@ export async function handleCidadaoFormSubmit(e) {
             showToast("Atualizado com sucesso!", "success");
         } else {
             delete cidadaoData.updated_at;
-            const { error } = await sb
+            const { data: inserted, error } = await sb
                 .from('cidadaos')
-                .insert(cidadaoData);
+                .insert(cidadaoData)
+                .select('id')
+                .single();
             if (error) throw error;
+            cidadaoIdSalvo = inserted.id;
             showToast("Adicionado com sucesso!", "success");
         }
+        await saveVeiculosForCidadao(cidadaoIdSalvo, veiculosData);
         closeCidadaoModal();
         // Recarrega página e lista de bairros em paralelo (pode ter bairro novo)
         await Promise.all([
@@ -466,7 +473,7 @@ export async function openCidadaoModal(cidadaoId = null) {
             $('cidadao-daughters').value = cidadao.daughters || 0;
             updateChildrenInputs('filho', cidadao.children);
             updateChildrenInputs('filha', cidadao.children);
-            fillVeiculoSection(cidadao);
+            await fillVeiculoSection(cidadaoId);
         }
     } else {
         titleEl.textContent = 'Adicionar Novo Cidadão';
@@ -526,105 +533,162 @@ export function getChildrenData() {
     return children.filter(c => c.name && c.dob);
 }
 
-// ── Veículo (só no cadastro interno — não existe no formulário público) ──
-// Fluxo: Possui veículo? Sim/Não → se Sim, Tipo (Carro/Moto/Ambos) → se
-// só Carro ou só Moto, pergunta a quantidade (Ambos assume 1 de cada,
-// sem perguntar, conforme decidido). Adesivado e Placa aparecem sempre
-// que possui veículo = Sim.
+// ── Veículos (só no cadastro interno — não existe no formulário público) ──
+// Cada cidadão pode ter vários veículos (ex: 2 carros + 1 moto), cada um
+// com seu próprio tipo/placa/modelo/cor/adesivado. São persistidos na
+// tabela `veiculos` (1:N com cidadaos) e sincronizados a cada salvamento
+// do formulário: apaga os veículos antigos do cidadão e insere os atuais
+// (mais simples que fazer diff — o volume por cidadão é sempre pequeno).
+// A lista na UI é dinâmica: "+ Adicionar veículo" acrescenta uma linha;
+// cada linha tem um botão para remover.
+
+function createVeiculoRow(veiculo = null) {
+    const row = document.createElement('div');
+    row.className = 'veiculo-row grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white border border-gray-200 rounded-lg p-3';
+    row.innerHTML = `
+        <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+            <select class="veiculo-tipo w-full border border-gray-300 p-2 rounded-lg text-sm">
+                <option value="Carro">Carro</option>
+                <option value="Moto">Moto</option>
+            </select>
+        </div>
+        <div class="md:col-span-3">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Placa</label>
+            <input type="text" class="veiculo-placa w-full border border-gray-300 p-2 rounded-lg text-sm uppercase" maxlength="8" placeholder="ABC-1234">
+        </div>
+        <div class="md:col-span-3">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Modelo</label>
+            <input type="text" class="veiculo-modelo w-full border border-gray-300 p-2 rounded-lg text-sm" placeholder="Ex: Gol">
+        </div>
+        <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Cor</label>
+            <input type="text" class="veiculo-cor w-full border border-gray-300 p-2 rounded-lg text-sm" placeholder="Ex: Prata">
+        </div>
+        <div class="md:col-span-1 flex items-center gap-1.5 pb-2">
+            <input type="checkbox" class="veiculo-adesivado h-4 w-4 text-green-600 border-gray-300 rounded">
+            <label class="text-xs text-gray-700">Adesivado</label>
+        </div>
+        <div class="md:col-span-1 flex justify-end pb-2">
+            <button type="button" class="remove-veiculo-btn text-red-500 hover:text-red-700 text-xl leading-none" title="Remover veículo">&times;</button>
+        </div>`;
+    if (veiculo) {
+        row.querySelector('.veiculo-tipo').value = veiculo.tipo || 'Carro';
+        row.querySelector('.veiculo-placa').value = veiculo.placa || '';
+        row.querySelector('.veiculo-modelo').value = veiculo.modelo || '';
+        row.querySelector('.veiculo-cor').value = veiculo.cor || '';
+        row.querySelector('.veiculo-adesivado').checked = !!veiculo.adesivado;
+    }
+    row.querySelector('.remove-veiculo-btn').addEventListener('click', () => row.remove());
+    return row;
+}
+
+// Toggle Sim/Não + botão de adicionar veículo. Chamado uma vez (flag
+// _ready evita duplicar listeners, mesmo padrão de masks.js).
 export function setupVeiculoToggle() {
     if (setupVeiculoToggle._ready) return;
     setupVeiculoToggle._ready = true;
 
     const detalhes = $('veiculo-detalhes');
-    const qtdCarroGroup = $('veiculo-qtd-carro-group');
-    const qtdMotoGroup = $('veiculo-qtd-moto-group');
+    const lista = $('veiculos-lista');
 
     document.querySelectorAll('input[name="cidadao-possui-veiculo"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const possui = $('cidadao-possui-veiculo-sim').checked;
             detalhes.classList.toggle('hidden', !possui);
             if (!possui) {
-                document.querySelectorAll('input[name="cidadao-tipo-veiculo"]').forEach(r => r.checked = false);
-                qtdCarroGroup.classList.add('hidden');
-                qtdMotoGroup.classList.add('hidden');
-                $('cidadao-veiculo-adesivado').checked = false;
-                $('cidadao-placa-veiculo').value = '';
+                lista.innerHTML = '';
+            } else if (lista.children.length === 0) {
+                lista.appendChild(createVeiculoRow());
             }
         });
     });
 
-    document.querySelectorAll('input[name="cidadao-tipo-veiculo"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            const tipo = radio.value;
-            qtdCarroGroup.classList.toggle('hidden', tipo !== 'Carro');
-            qtdMotoGroup.classList.toggle('hidden', tipo !== 'Moto');
-        });
+    $('add-veiculo-btn')?.addEventListener('click', () => {
+        lista.appendChild(createVeiculoRow());
     });
 }
 
 // Reseta a seção de veículo para o estado "Não possui" — chamado ao abrir
-// o modal para um cadastro novo (form.reset() sozinho não esconde a seção).
+// o modal para um cadastro novo (form.reset() sozinho não esconde a seção
+// nem limpa as linhas adicionadas dinamicamente).
 function resetVeiculoSection() {
     $('cidadao-possui-veiculo-nao').checked = true;
     $('veiculo-detalhes').classList.add('hidden');
-    document.querySelectorAll('input[name="cidadao-tipo-veiculo"]').forEach(r => r.checked = false);
-    $('veiculo-qtd-carro-group').classList.add('hidden');
-    $('veiculo-qtd-moto-group').classList.add('hidden');
-    $('cidadao-qtd-carros').value = 1;
-    $('cidadao-qtd-motos').value = 1;
-    $('cidadao-veiculo-adesivado').checked = false;
-    $('cidadao-placa-veiculo').value = '';
+    $('veiculos-lista').innerHTML = '';
+}
+
+// Busca os veículos já salvos do cidadão (usado ao editar e na ficha de detalhes).
+async function fetchVeiculosDoCidadao(cidadaoId) {
+    const { data, error } = await sb.from('veiculos').select('*').eq('cidadao_id', cidadaoId).order('created_at', { ascending: true });
+    if (error) { console.error(error); return []; }
+    return data || [];
 }
 
 // Preenche a seção de veículo ao editar um cidadão existente.
-function fillVeiculoSection(cidadao) {
+async function fillVeiculoSection(cidadaoId) {
     resetVeiculoSection();
-    if (!cidadao.possui_veiculo) return;
+    if (!cidadaoId) return;
+    const veiculos = await fetchVeiculosDoCidadao(cidadaoId);
+    if (!veiculos.length) return;
     $('cidadao-possui-veiculo-sim').checked = true;
     $('veiculo-detalhes').classList.remove('hidden');
-    const tipo = cidadao.tipo_veiculo;
-    if (tipo === 'Carro') { $('cidadao-tipo-veiculo-carro').checked = true; $('veiculo-qtd-carro-group').classList.remove('hidden'); }
-    else if (tipo === 'Moto') { $('cidadao-tipo-veiculo-moto').checked = true; $('veiculo-qtd-moto-group').classList.remove('hidden'); }
-    else if (tipo === 'Ambos') { $('cidadao-tipo-veiculo-ambos').checked = true; }
-    $('cidadao-qtd-carros').value = cidadao.qtd_carros || 1;
-    $('cidadao-qtd-motos').value = cidadao.qtd_motos || 1;
-    $('cidadao-veiculo-adesivado').checked = cidadao.veiculo_adesivado || false;
-    $('cidadao-placa-veiculo').value = cidadao.placa_veiculo || '';
+    const lista = $('veiculos-lista');
+    veiculos.forEach(v => lista.appendChild(createVeiculoRow(v)));
 }
 
-// Lê a seção de veículo do form e monta os campos pro insert/update.
-// "Ambos" grava 1 carro + 1 moto (sem pedir quantidade, conforme decidido).
+// Lê a lista de veículos do formulário — cada linha vira um registo na
+// tabela `veiculos` (ver saveVeiculosForCidadao).
 function getVeiculoData() {
     const possui = $('cidadao-possui-veiculo-sim').checked;
-    if (!possui) {
-        return { possui_veiculo: false, tipo_veiculo: null, qtd_carros: 0, qtd_motos: 0, veiculo_adesivado: false, placa_veiculo: null };
-    }
-    const tipoInput = document.querySelector('input[name="cidadao-tipo-veiculo"]:checked');
-    const tipo = tipoInput ? tipoInput.value : null;
-    let qtdCarros = 0, qtdMotos = 0;
-    if (tipo === 'Carro') qtdCarros = parseInt($('cidadao-qtd-carros').value, 10) || 1;
-    else if (tipo === 'Moto') qtdMotos = parseInt($('cidadao-qtd-motos').value, 10) || 1;
-    else if (tipo === 'Ambos') { qtdCarros = 1; qtdMotos = 1; }
-    return {
-        possui_veiculo: true,
-        tipo_veiculo: tipo,
-        qtd_carros: qtdCarros,
-        qtd_motos: qtdMotos,
-        veiculo_adesivado: $('cidadao-veiculo-adesivado').checked,
-        placa_veiculo: (($('cidadao-placa-veiculo').value || '').trim() || null)
-    };
+    if (!possui) return [];
+    return [...document.querySelectorAll('#veiculos-lista .veiculo-row')].map(row => ({
+        tipo: row.querySelector('.veiculo-tipo').value,
+        placa: (row.querySelector('.veiculo-placa').value || '').trim().toUpperCase() || null,
+        modelo: (row.querySelector('.veiculo-modelo').value || '').trim() || null,
+        cor: (row.querySelector('.veiculo-cor').value || '').trim() || null,
+        adesivado: row.querySelector('.veiculo-adesivado').checked
+    }));
 }
 
-// Resumo textual do veículo pro modal de detalhes.
-function formatVeiculoResumo(cidadao) {
-    if (!cidadao.possui_veiculo) return 'Não possui';
+// Substitui todos os veículos do cidadão pelos que estão no formulário.
+async function saveVeiculosForCidadao(cidadaoId, veiculosData) {
+    const { error: delError } = await sb.from('veiculos').delete().eq('cidadao_id', cidadaoId);
+    if (delError) throw delError;
+    if (veiculosData.length > 0) {
+        const { error: insError } = await sb.from('veiculos')
+            .insert(veiculosData.map(v => ({ ...v, cidadao_id: cidadaoId })));
+        if (insError) throw insError;
+    }
+}
+
+// Resumo textual (carros/motos/adesivados) pro modal de detalhes.
+function formatVeiculoResumo(veiculos) {
+    if (!veiculos.length) return 'Não possui';
+    const carros = veiculos.filter(v => v.tipo === 'Carro').length;
+    const motos = veiculos.filter(v => v.tipo === 'Moto').length;
+    const adesivados = veiculos.filter(v => v.adesivado).length;
     const partes = [];
-    if (cidadao.qtd_carros) partes.push(`${cidadao.qtd_carros} carro(s)`);
-    if (cidadao.qtd_motos) partes.push(`${cidadao.qtd_motos} moto(s)`);
-    let texto = partes.join(' + ') || (cidadao.tipo_veiculo || 'Sim');
-    texto += cidadao.veiculo_adesivado ? ' · Adesivado' : ' · Não adesivado';
-    if (cidadao.placa_veiculo) texto += ` · Placa ${cidadao.placa_veiculo}`;
-    return texto;
+    if (carros) partes.push(`${carros} carro(s)`);
+    if (motos) partes.push(`${motos} moto(s)`);
+    return `${partes.join(' + ') || 'Sim'} · ${adesivados} adesivado(s)`;
+}
+
+// Lista detalhada dos veículos do cidadão pro modal de detalhes.
+function renderVeiculosDetalhes(veiculos) {
+    const summaryEl = $('details-veiculo-resumo');
+    const listEl = $('details-veiculos-list');
+    if (summaryEl) summaryEl.textContent = formatVeiculoResumo(veiculos);
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (!veiculos.length) return;
+    veiculos.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5';
+        const info = [v.tipo, v.placa, v.modelo, v.cor].filter(Boolean).join(' · ');
+        item.innerHTML = `<span>${info}</span>${v.adesivado ? '<span class="text-green-600 font-semibold ml-2">Adesivado</span>' : ''}`;
+        listEl.appendChild(item);
+    });
 }
 
 export async function handleCEPBlur(e) {
@@ -693,8 +757,9 @@ export async function openDetailsModal(cidadaoId) {
     $('details-local-trabalho').textContent = cidadao.localtrabalho || 'Não informado';
     const leader = state.allLeaders.find(l => l.id === cidadao.leader);
     $('details-leader').textContent = leader ? leader.name : 'Nenhuma';
-    $('details-veiculo').textContent = formatVeiculoResumo(cidadao);
-    _onRenderCotas(cidadao);
+    fetchVeiculosDoCidadao(cidadao.id).then(renderVeiculosDetalhes);
+    const historyBtn = $('details-view-cotas-btn');
+    if (historyBtn) historyBtn.onclick = () => _onOpenCotaHistory(cidadao);
     const childrenEl = $('details-children');
     const totalFilhos = (cidadao.sons || 0) + (cidadao.daughters || 0);
     childrenEl.innerHTML = `<strong>Família:</strong> ${totalFilhos} filho(s)`;
