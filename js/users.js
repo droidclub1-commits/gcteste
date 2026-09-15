@@ -10,6 +10,7 @@
 import { showToast } from './utils.js';
 import { sb, EDGE_FUNCTION_URL } from './config.js';
 import { state } from './state.js';
+import { resetVeiculosPosEleicao } from './veiculos.js';
 
 let allUsers = [];
 let editingUserId = null;
@@ -103,10 +104,16 @@ export function renderUsersList() {
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(deleteBtn);
         } else {
-            const youSpan = document.createElement('span');
-            youSpan.className = 'text-xs text-gray-400 italic';
-            youSpan.textContent = '(você)';
-            actionsDiv.appendChild(youSpan);
+            // Clicar em "(você)" no próprio card de admin revela o painel
+            // de funções de administrador (#admin-maintenance-panel).
+            const youBtn = document.createElement('button');
+            youBtn.type = 'button';
+            youBtn.className = 'text-xs text-gray-400 italic hover:text-blue-600 hover:not-italic flex items-center gap-1';
+            youBtn.title = 'Funções de administrador';
+            youBtn.innerHTML = '<span>(você)</span>' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+            youBtn.addEventListener('click', () => toggleAdminMaintenancePanel());
+            actionsDiv.appendChild(youBtn);
         }
 
         row.appendChild(infoDiv);
@@ -186,5 +193,59 @@ export async function confirmDeleteUser(u) {
         await loadUsers();
     } catch(e) {
         showToast(e.message || 'Erro ao remover.', 'error');
+    }
+}
+
+// ── Painel de funções de administrador ──────────────────────────────
+export function toggleAdminMaintenancePanel() {
+    const panel = document.getElementById('admin-maintenance-panel');
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+// Wiring do botão "Zerar Adesivos e Histórico de Abastecimento".
+// Chamado uma vez no arranque da app (mesmo padrão de setupVeiculosFiltro
+// etc.) — o botão só existe/é visível dentro da página Utilizadores, que
+// já é restrita a admin no sidebar (applyRoleUI em app.js).
+export function setupAdminMaintenancePanel() {
+    const btn = document.getElementById('reset-veiculos-eleicao-btn');
+    if (!btn || btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener('click', handleResetVeiculosClick);
+}
+
+async function handleResetVeiculosClick() {
+    const btn = document.getElementById('reset-veiculos-eleicao-btn');
+    const primeiraConfirmacao = confirm(
+        'Isto vai remover o selo "adesivado" de TODOS os veículos e apagar ' +
+        'TODO o histórico de abastecimento (cotas de combustível) do sistema.\n\n' +
+        'Os cidadãos e os veículos continuam cadastrados normalmente.\n\n' +
+        'Esta ação não pode ser desfeita. Deseja continuar?'
+    );
+    if (!primeiraConfirmacao) return;
+
+    const digitado = prompt('Para confirmar, digite ZERAR (em maiúsculas):');
+    if (digitado !== 'ZERAR') {
+        if (digitado !== null) showToast('Confirmação incorreta — nada foi alterado.', 'warning');
+        return;
+    }
+
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="display:inline-block;margin-right:6px"></div> A processar...';
+    try {
+        const result = await resetVeiculosPosEleicao();
+        const veiculos = result?.veiculos_atualizados ?? 0;
+        const cotas = result?.cotas_apagadas ?? 0;
+        showToast(`Concluído! ${veiculos} veículo(s) zerado(s), ${cotas} registo(s) de abastecimento apagado(s).`, 'success');
+    } catch (e) {
+        console.error(e);
+        showToast(e.message || 'Erro ao zerar veículos.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
     }
 }
