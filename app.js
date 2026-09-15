@@ -27,7 +27,8 @@ import {
 } from './js/demandas.js';
 import {
     resetUsers, loadUsers, renderUsersList,
-    openUserModal, closeUserModal, handleUserFormSubmit, confirmDeleteUser
+    openUserModal, closeUserModal, handleUserFormSubmit, confirmDeleteUser,
+    setupAdminMaintenancePanel
 } from './js/users.js';
 import {
     getCoberturaData, setupCoberturaLiderAutocomplete,
@@ -362,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cancelUserBtn) cancelUserBtn.addEventListener('click', closeUserModal);
         const userForm = document.getElementById('user-form');
         if (userForm) userForm.addEventListener('submit', handleUserFormSubmit);
+        setupAdminMaintenancePanel();
         cancelDeleteBtn.addEventListener('click', closeConfirmationModal);
         confirmDeleteBtn.addEventListener('click', handleDeleteConfirmation);
         cidadaoCEP.addEventListener('blur', handleCEPBlur);
