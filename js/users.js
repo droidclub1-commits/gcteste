@@ -67,7 +67,8 @@ export function renderUsersList() {
             : 'Nunca';
 
         const row = document.createElement('div');
-        row.className = 'bg-white p-4 rounded-lg shadow-sm border flex items-center justify-between gap-4';
+        row.className = 'bg-white p-4 rounded-lg shadow-sm border flex items-center justify-between gap-4' +
+            (isCurrentUser ? ' hover:bg-blue-50 transition-colors' : '');
 
         const infoDiv = document.createElement('div');
         infoDiv.className = 'flex-1 min-w-0';
@@ -104,16 +105,18 @@ export function renderUsersList() {
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(deleteBtn);
         } else {
-            // Clicar em "(você)" no próprio card de admin revela o painel
-            // de funções de administrador (#admin-maintenance-panel).
-            const youBtn = document.createElement('button');
-            youBtn.type = 'button';
-            youBtn.className = 'text-xs text-gray-400 italic hover:text-blue-600 hover:not-italic flex items-center gap-1';
-            youBtn.title = 'Funções de administrador';
-            youBtn.innerHTML = '<span>(você)</span>' +
+            // Card inteiro é clicável e revela o painel de funções de
+            // administrador (#admin-maintenance-panel) — não só um texto
+            // pequeno no canto, pra ficar óbvio e fácil de acertar o clique.
+            const youBadge = document.createElement('span');
+            youBadge.className = 'text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1';
+            youBadge.innerHTML = '<span>Funções de admin</span>' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
-            youBtn.addEventListener('click', () => toggleAdminMaintenancePanel());
-            actionsDiv.appendChild(youBtn);
+            actionsDiv.appendChild(youBadge);
+
+            row.style.cursor = 'pointer';
+            row.title = 'Clique para abrir as funções de administrador';
+            row.addEventListener('click', () => toggleAdminMaintenancePanel());
         }
 
         row.appendChild(infoDiv);
