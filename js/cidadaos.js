@@ -15,7 +15,7 @@
 // via initCidadaos(), evitando import circular com app.js.
 // ═══════════════════════════════════════════════════════════════
 
-import { showToast, getInitials, formatarData, getFaixaEtaria } from './utils.js';
+import { showToast, getInitials, formatarData, getFaixaEtaria, matchAmapaMunicipio } from './utils.js';
 import { sb } from './config.js';
 import { state } from './state.js';
 
@@ -467,8 +467,10 @@ export async function openCidadaoModal(cidadaoId = null) {
             $('cidadao-numero').value = cidadao.numero || '';
             $('cidadao-complemento').value = cidadao.complemento || '';
             $('cidadao-bairro').value = cidadao.bairro || '';
-            $('cidadao-cidade').value = cidadao.cidade || '';
-            $('cidadao-estado').value = cidadao.estado || '';
+            // Normaliza município antigo (pode ter grafia diferente da opção
+            // do select, já que o campo antes era texto livre) pra opção certa.
+            $('cidadao-cidade').value = matchAmapaMunicipio(cidadao.cidade);
+            $('cidadao-estado').value = 'AP';
             $('cidadao-sons').value = cidadao.sons || 0;
             $('cidadao-daughters').value = cidadao.daughters || 0;
             updateChildrenInputs('filho', cidadao.children);
@@ -703,8 +705,12 @@ export async function handleCEPBlur(e) {
             } else {
                 $('cidadao-logradouro').value = data.logradouro;
                 $('cidadao-bairro').value = data.bairro;
-                $('cidadao-cidade').value = data.localidade;
-                $('cidadao-estado').value = data.uf;
+                const municipio = matchAmapaMunicipio(data.localidade);
+                $('cidadao-cidade').value = municipio;
+                $('cidadao-estado').value = 'AP';
+                if (!municipio && data.localidade) {
+                    showToast(`CEP é de "${data.localidade}" — fora da lista de municípios do Amapá. Selecione manualmente.`, 'warning');
+                }
                 $('cidadao-numero').focus();
             }
         } catch (error) {
