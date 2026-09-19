@@ -41,6 +41,21 @@ function applyMask(id, mask) {
     });
 }
 
+// ── Municípios do Amapá — mesma lista/normalização usada no app principal
+// (utils.js), duplicada aqui porque este arquivo é script isolado, sem
+// módulos ES (ver <script> em cadastro-publico.html).
+const AMAPA_MUNICIPIOS = [
+    'Amapá', 'Calçoene', 'Cutias', 'Ferreira Gomes', 'Itaubal', 'Laranjal do Jari',
+    'Macapá', 'Mazagão', 'Oiapoque', 'Pedra Branca do Amapari', 'Porto Grande',
+    'Pracuúba', 'Santana', 'Serra do Navio', 'Tartarugalzinho', 'Vitória do Jari'
+];
+function matchAmapaMunicipio(raw) {
+    if (!raw) return '';
+    const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+    const alvo = norm(raw);
+    return AMAPA_MUNICIPIOS.find(m => norm(m) === alvo) || '';
+}
+
 // ── Busca automática de endereço pelo CEP (ViaCEP) ──────────────────
 // Mesma lógica do app principal (handleCEPBlur em cidadaos.js), replicada
 // aqui porque o formulário público é uma página isolada.
@@ -56,8 +71,12 @@ async function handleCEPBlurPublic(e) {
         } else {
             document.getElementById('c-logradouro').value = data.logradouro || '';
             document.getElementById('c-bairro').value = data.bairro || '';
-            document.getElementById('c-cidade').value = data.localidade || '';
-            document.getElementById('c-estado').value = data.uf || '';
+            const municipio = matchAmapaMunicipio(data.localidade);
+            document.getElementById('c-cidade').value = municipio;
+            document.getElementById('c-estado').value = 'AP';
+            if (!municipio && data.localidade) {
+                showToast(`CEP é de "${data.localidade}" — fora da lista de municípios do Amapá. Selecione manualmente.`, 'warning');
+            }
             document.getElementById('c-numero').focus();
         }
     } catch (err) {
