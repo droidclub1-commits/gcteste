@@ -68,3 +68,23 @@ export function getFaixaEtaria(dob) {
         return 'N/A';
     } catch (e) { return 'N/A'; }
 }
+
+// ── Municípios do Amapá ──────────────────────────────────────────────
+// Lista fixa usada nos <select> de Cidade (cadastro principal e público)
+// e para normalizar valores antigos/vindos do ViaCEP que podem vir com
+// grafia diferente (maiúsculas, sem acento etc.) da opção cadastrada.
+export const AMAPA_MUNICIPIOS = [
+    'Amapá', 'Calçoene', 'Cutias', 'Ferreira Gomes', 'Itaubal', 'Laranjal do Jari',
+    'Macapá', 'Mazagão', 'Oiapoque', 'Pedra Branca do Amapari', 'Porto Grande',
+    'Pracuúba', 'Santana', 'Serra do Navio', 'Tartarugalzinho', 'Vitória do Jari'
+];
+
+// Acha o município da lista acima que corresponde ao texto recebido,
+// ignorando acentuação, caixa e espaços extras. Devolve '' se não achar
+// (ex.: cidade fora do Amapá) — quem chama decide o que fazer nesse caso.
+export function matchAmapaMunicipio(raw) {
+    if (!raw) return '';
+    const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+    const alvo = norm(raw);
+    return AMAPA_MUNICIPIOS.find(m => norm(m) === alvo) || '';
+}
