@@ -200,7 +200,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sexo: document.getElementById('c-sexo').value || null,
                 type: 'Eleitor', // fixo — o formulário público não pergunta mais isso (LGPD: evita coletar opinião política via este campo)
                 cpf: v(document.getElementById('c-cpf').value),
-                localtrabalho: v(document.getElementById('c-escola').value),
                 nome_mae: v(document.getElementById('c-nome-mae').value),
                 nome_pai: v(document.getElementById('c-nome-pai').value),
                 phone: v(document.getElementById('c-phone').value),
