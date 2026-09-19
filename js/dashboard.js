@@ -358,7 +358,7 @@ async function updateCidadaosPorBairroChart() {
             });
             return;
         }
-        const labels = data.map(r => r.bairro || 'N/A');
+        const labels = data.map(r => r.bairro ? (r.cidade ? `${r.bairro} (${r.cidade})` : r.bairro) : 'N/A');
         const values = data.map(r => r.total);
         if (cidadaosBairroChart) cidadaosBairroChart.destroy();
         cidadaosBairroChart = new Chart(ctx, {
