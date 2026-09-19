@@ -41,6 +41,31 @@ function applyMask(id, mask) {
     });
 }
 
+// ── Busca automática de endereço pelo CEP (ViaCEP) ──────────────────
+// Mesma lógica do app principal (handleCEPBlur em cidadaos.js), replicada
+// aqui porque o formulário público é uma página isolada.
+async function handleCEPBlurPublic(e) {
+    const cep = e.target.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!response.ok) throw new Error('CEP não encontrado');
+        const data = await response.json();
+        if (data.erro) {
+            showToast('CEP não encontrado.', 'error');
+        } else {
+            document.getElementById('c-logradouro').value = data.logradouro || '';
+            document.getElementById('c-bairro').value = data.bairro || '';
+            document.getElementById('c-cidade').value = data.localidade || '';
+            document.getElementById('c-estado').value = data.uf || '';
+            document.getElementById('c-numero').focus();
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Erro ao consultar o CEP.', 'error');
+    }
+}
+
 function resetFormPageState() {
     accessPassword = null;
     document.getElementById('form-page').classList.add('hidden');
@@ -66,6 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyMask('c-cpf', '999.999.999-99');
     applyMask('c-phone', '(99) 99999-9999');
     applyMask('c-cep', '99999-999');
+    document.getElementById('c-cep')?.addEventListener('blur', handleCEPBlurPublic);
 
     const invalidLinkPage = document.getElementById('invalid-link-page');
     const gatePage = document.getElementById('gate-page');
