@@ -281,11 +281,14 @@
                     <div id="cobertura-filters-wrap" class="filters-collapsed flex gap-2 mt-4 flex-wrap items-center">
                         <select id="cobertura-filter-cidade" class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm">
                             <option value="">Todos os Municípios</option>
-                            <option value="Macapá">Macapá</option><option value="Santana">Santana</option>
-                            <option value="Laranjal do Jari">Laranjal do Jari</option><option value="Oiapoque">Oiapoque</option>
-                            <option value="Mazagão">Mazagão</option><option value="Porto Grande">Porto Grande</option>
-                            <option value="Tartarugalzinho">Tartarugalzinho</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option>
-                            <option value="Calçoene">Calçoene</option><option value="Amapá">Amapá</option>
+                            <option value="Amapá">Amapá</option><option value="Calçoene">Calçoene</option>
+                            <option value="Cutias">Cutias</option><option value="Ferreira Gomes">Ferreira Gomes</option>
+                            <option value="Itaubal">Itaubal</option><option value="Laranjal do Jari">Laranjal do Jari</option>
+                            <option value="Macapá">Macapá</option><option value="Mazagão">Mazagão</option>
+                            <option value="Oiapoque">Oiapoque</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option>
+                            <option value="Porto Grande">Porto Grande</option><option value="Pracuúba">Pracuúba</option>
+                            <option value="Santana">Santana</option><option value="Serra do Navio">Serra do Navio</option>
+                            <option value="Tartarugalzinho">Tartarugalzinho</option><option value="Vitória do Jari">Vitória do Jari</option>
                         </select>
                         <input type="text" id="cobertura-filter-zona" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32" placeholder="Zona">
                         <input type="text" id="cobertura-filter-secao" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32" placeholder="Seção">
@@ -535,8 +538,8 @@
                                 <div><label for="cidadao-numero" class="block text-sm font-medium text-gray-700 mb-1">Nº</label><input type="text" id="cidadao-numero" class="w-full border border-gray-300 p-2 rounded-lg"></div>
                                 <div class="col-span-2"><label for="cidadao-complemento" class="block text-sm font-medium text-gray-700 mb-1">Complemento</label><input type="text" id="cidadao-complemento" class="w-full border border-gray-300 p-2 rounded-lg"></div>
                                 <div class="col-span-3"><label for="cidadao-bairro" class="block text-sm font-medium text-gray-700 mb-1">Bairro</label><input type="text" id="cidadao-bairro" class="w-full border border-gray-300 p-2 rounded-lg"></div>
-                                <div class="col-span-2"><label for="cidadao-cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label><input type="text" id="cidadao-cidade" class="w-full border border-gray-300 p-2 rounded-lg"></div>
-                                <div><label for="cidadao-estado" class="block text-sm font-medium text-gray-700 mb-1">UF</label><input type="text" id="cidadao-estado" class="w-full border border-gray-300 p-2 rounded-lg"></div>
+                                <div class="col-span-2"><label for="cidadao-cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label><select id="cidadao-cidade" class="w-full border border-gray-300 p-2 rounded-lg bg-white"><option value="">Selecione o município...</option><option value="Amapá">Amapá</option><option value="Calçoene">Calçoene</option><option value="Cutias">Cutias</option><option value="Ferreira Gomes">Ferreira Gomes</option><option value="Itaubal">Itaubal</option><option value="Laranjal do Jari">Laranjal do Jari</option><option value="Macapá">Macapá</option><option value="Mazagão">Mazagão</option><option value="Oiapoque">Oiapoque</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option><option value="Porto Grande">Porto Grande</option><option value="Pracuúba">Pracuúba</option><option value="Santana">Santana</option><option value="Serra do Navio">Serra do Navio</option><option value="Tartarugalzinho">Tartarugalzinho</option><option value="Vitória do Jari">Vitória do Jari</option></select></div>
+                                <div><label for="cidadao-estado" class="block text-sm font-medium text-gray-700 mb-1">UF</label><input type="text" id="cidadao-estado" value="AP" readonly class="w-full border border-gray-300 p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"></div>
                             </div>
                             <div class="flex gap-4 pt-2">
                                 <div><label for="cidadao-sons" class="block text-sm font-medium text-gray-700 mb-1">Filhos</label><input type="number" id="cidadao-sons" class="w-full border border-gray-300 p-2 rounded-lg" min="0" value="0"></div>
