@@ -11,8 +11,8 @@
 
 import { getStatusInfo, getFaixaEtaria } from './utils.js';
 import { sb } from './config.js';
-import { state } from './state.js';
-import { openDetailsModal, getTotalCidadaosCount } from './cidadaos.js';
+import { fetchAllRows } from './data.js';
+import { openDetailsModal } from './cidadaos.js';
 import { openDemandaDetailsModal } from './demandas.js';
 
 let cidadaosChart = null, demandasChart = null;
@@ -24,45 +24,47 @@ let _aniversariantesTodos = [];
 let _anivModalPagina      = 1;
 const ANIV_MODAL_POR_PAG  = 12;
 
+let dashboardGeneration = 0;
 export async function updateDashboard() {
+    const generation = ++dashboardGeneration;
     const totalEl = document.getElementById('dashboard-total-cidadaos');
-    // As duas contagens (cidadãos/demandas) em paralelo — nenhuma depende da outra
-    await Promise.all([
-        (async () => {
-            // Admin vê totais globais; cadastrador vê só os seus (RLS já filtra automaticamente)
-            if (state.userRole === 'admin' && getTotalCidadaosCount() > 0) {
-                totalEl.textContent = getTotalCidadaosCount();
-            } else {
-                const { count } = await sb.from('cidadaos').select('*', { count: 'exact', head: true });
-                totalEl.textContent = count || 0;
-            }
-            totalEl.classList.remove('animate-pulse');
-        })(),
-        (async () => {
-            // Contador de demandas — busca do servidor para reflectir total real
-            const totalDemandasEl = document.getElementById('dashboard-total-demandas');
-            try {
-                const { count: cntDemandas } = await sb
-                    .from('demandas').select('*', { count: 'exact', head: true });
-                totalDemandasEl.textContent = cntDemandas || 0;
-            } catch(e) { /* mantém o valor anterior */ }
-            totalDemandasEl.classList.remove('animate-pulse');
-        })()
-    ]);
-    // Gráficos e widgets em paralelo — não dependem uns dos outros
-    updateDemandasRecentes();
-    updateCidadaosPorTipoChart();
-    updateDemandasPorStatusChart(); // async — não bloqueia
-    await Promise.all([
-        updateAniversariantes(),
-        updateCidadaosPorBairroChart(),
-        updateCidadaosPorMunicipioChart(),
-        updateCidadaosPorSexoChart(),
-        updateCidadaosPorFaixaEtariaChart()
-    ]);
+    const demandasEl = document.getElementById('dashboard-total-demandas');
+    try {
+        // Independente dos filtros e caches das telas de cidadãos/demandas.
+        const [cidadaos, demandas] = await Promise.all([
+            fetchAllRows(() => sb.from('cidadaos').select('id, name, dob, type, cidade, bairro, sexo', { count: 'exact' }).order('id')),
+            fetchAllRows(() => sb.from('demandas').select('id, title, status, created_at, cidadao:cidadaos(name)', { count: 'exact' }).order('created_at', { ascending: false }).order('id'))
+        ]);
+        if (generation !== dashboardGeneration) return;
+        if (totalEl) { totalEl.textContent = cidadaos.length; totalEl.classList.remove('animate-pulse'); }
+        if (demandasEl) { demandasEl.textContent = demandas.length; demandasEl.classList.remove('animate-pulse'); }
+        updateDemandasRecentes(demandas);
+        await Promise.all([
+            updateAniversariantes(cidadaos), updateCidadaosPorTipoChart(cidadaos),
+            updateDemandasPorStatusChart(demandas), updateCidadaosPorBairroChart(cidadaos),
+            updateCidadaosPorMunicipioChart(cidadaos), updateCidadaosPorSexoChart(cidadaos),
+            updateCidadaosPorFaixaEtariaChart(cidadaos)
+        ]);
+    } catch (error) {
+        if (generation !== dashboardGeneration) return;
+        console.error('Dashboard:', error);
+        for (const el of [totalEl, demandasEl]) {
+            if (el) { el.textContent = 'Indisponível'; el.classList.remove('animate-pulse'); }
+        }
+        _aniversariantesTodos = [];
+        const anivTotal = document.getElementById('aniversariantes-total');
+        if (anivTotal) anivTotal.textContent = '';
+        document.getElementById('aniversariantes-ver-mais')?.classList.add('hidden');
+        for (const chart of [cidadaosChart, demandasChart, cidadaosBairroChart, cidadaosSexoChart, cidadaosFaixaEtariaChart, cidadaosMunicipioChart]) chart?.destroy();
+        cidadaosChart = demandasChart = cidadaosBairroChart = cidadaosSexoChart = cidadaosFaixaEtariaChart = cidadaosMunicipioChart = null;
+        for (const id of ['aniversariantes-list', 'demandas-recentes-list']) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'Não foi possível atualizar os dados. Tente novamente.';
+        }
+    }
 }
 
-async function updateAniversariantes() {
+async function updateAniversariantes(data) {
     const listEl     = document.getElementById('aniversariantes-list');
     const totalEl    = document.getElementById('aniversariantes-total');
     const verMais    = document.getElementById('aniversariantes-ver-mais');
@@ -75,16 +77,8 @@ async function updateAniversariantes() {
         const mes     = now.getMonth() + 1;
         const diaHoje = now.getDate();
 
-        const { data, error } = await sb
-            .from('cidadaos')
-            .select('id, name, dob')
-            .not('dob', 'is', null)
-            .order('dob', { ascending: true })
-            .limit(2000);
-        if (error) throw error;
-
         const doMes = (data || [])
-            .filter(c => parseInt(c.dob.split('-')[1], 10) === mes)
+            .filter(c => c.dob && parseInt(c.dob.split('-')[1], 10) === mes)
             .sort((a, b) => parseInt(a.dob.split('-')[2], 10) - parseInt(b.dob.split('-')[2], 10));
 
         _aniversariantesTodos = doMes;
@@ -220,17 +214,17 @@ function renderAniversariantesModal() {
     if (nextBtn) nextBtn.disabled = _anivModalPagina >= totPag;
 }
 
-function updateDemandasRecentes() {
+function updateDemandasRecentes(demandas) {
     const listEl = document.getElementById('demandas-recentes-list');
     if (!listEl) return;
-    const recentes = state.allDemandas.slice(0, 5);
+    const recentes = demandas.slice(0, 5);
     listEl.innerHTML = '';
     if (recentes.length === 0) {
         listEl.innerHTML = '<p class="text-sm text-gray-500">Nenhuma demanda recente.</p>';
         return;
     }
     recentes.forEach(d => {
-        const nomeSolicitante = d.cidadao ? d.cidadao.name : (state.allCidadaos.find(c => c.id === d.cidadao_id)?.name || 'Desconhecido');
+        const nomeSolicitante = d.cidadao ? d.cidadao.name : 'Desconhecido';
         const statusInfo = getStatusInfo(d.status);
         const item = document.createElement('div');
         item.className = 'p-2 rounded-lg hover:bg-gray-50 border-b last:border-b-0 cursor-pointer';
@@ -254,15 +248,10 @@ function updateDemandasRecentes() {
     });
 }
 
-async function updateCidadaosPorTipoChart() {
+async function updateCidadaosPorTipoChart(data) {
     const ctx = document.getElementById('cidadaos-por-tipo-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb
-            .from('cidadaos')
-            .select('type')
-            .not('type', 'is', null);
-        if (error) throw error;
 
         const contagem = (data || []).reduce((acc, c) => {
             acc[c.type] = (acc[c.type] || 0) + 1;
@@ -282,14 +271,10 @@ async function updateCidadaosPorTipoChart() {
     } catch(e) { console.warn('Chart tipo:', e); }
 }
 
-async function updateDemandasPorStatusChart() {
+async function updateDemandasPorStatusChart(data) {
     const ctx = document.getElementById('demandas-por-status-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb
-            .from('demandas')
-            .select('status');
-        if (error) throw error;
         const contagem = (data || []).reduce((acc, d) => {
             acc[d.status] = (acc[d.status] || 0) + 1;
             return acc;
@@ -306,12 +291,10 @@ async function updateDemandasPorStatusChart() {
     } catch(e) { console.error('Erro gráfico demandas:', e); }
 }
 
-async function updateCidadaosPorMunicipioChart() {
+async function updateCidadaosPorMunicipioChart(data) {
     const ctx = document.getElementById('cidadaos-por-municipio-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb.from('cidadaos').select('cidade');
-        if (error) throw error;
         const contagem = (data || []).reduce((acc, c) => {
             const cidade = c.cidade || 'Não Informado';
             acc[cidade] = (acc[cidade] || 0) + 1;
@@ -343,21 +326,17 @@ async function updateCidadaosPorMunicipioChart() {
     } catch(e) { console.warn('Chart município:', e); }
 }
 
-async function updateCidadaosPorBairroChart() {
+async function updateCidadaosPorBairroChart(cidadaos) {
     const ctx = document.getElementById('cidadaos-por-bairro-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb.rpc('count_by_bairro');
-        if (error || !data) {
-            const bairros = window._bairrosDisponiveis || [];
-            if (cidadaosBairroChart) cidadaosBairroChart.destroy();
-            cidadaosBairroChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: bairros.slice(0, 10), datasets: [{ label: 'Bairros', data: new Array(Math.min(bairros.length,10)).fill(0), backgroundColor: '#10B981' }] },
-                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true } } }
-            });
-            return;
+        const groups = new Map();
+        for (const c of cidadaos) {
+            const key = JSON.stringify([c.cidade || '', c.bairro || '']);
+            const group = groups.get(key) || { cidade: c.cidade, bairro: c.bairro, total: 0 };
+            group.total++; groups.set(key, group);
         }
+        const data = [...groups.values()].sort((a, b) => b.total - a.total).slice(0, 10);
         const labels = data.map(r => r.bairro ? (r.cidade ? `${r.bairro} (${r.cidade})` : r.bairro) : 'N/A');
         const values = data.map(r => r.total);
         if (cidadaosBairroChart) cidadaosBairroChart.destroy();
@@ -369,12 +348,10 @@ async function updateCidadaosPorBairroChart() {
     } catch(e) { console.warn('Chart bairro:', e); }
 }
 
-async function updateCidadaosPorSexoChart() {
+async function updateCidadaosPorSexoChart(data) {
     const ctx = document.getElementById('cidadaos-por-sexo-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb.from('cidadaos').select('sexo');
-        if (error) throw error;
         const contagem = (data || []).reduce((acc, c) => {
             const sexo = c.sexo || 'Não Informar';
             acc[sexo] = (acc[sexo] || 0) + 1;
@@ -391,12 +368,10 @@ async function updateCidadaosPorSexoChart() {
     } catch(e) { console.warn('Chart sexo:', e); }
 }
 
-async function updateCidadaosPorFaixaEtariaChart() {
+async function updateCidadaosPorFaixaEtariaChart(data) {
     const ctx = document.getElementById('cidadaos-por-faixa-etaria-chart');
     if (!ctx) return;
     try {
-        const { data, error } = await sb.from('cidadaos').select('dob');
-        if (error) throw error;
         const faixas = { '0-17': 0, '18-25': 0, '26-35': 0, '36-50': 0, '51-65': 0, '66+': 0, 'N/A': 0 };
         (data || []).forEach(c => { const faixa = getFaixaEtaria(c.dob); faixas[faixa]++; });
         const labels = Object.keys(faixas);

@@ -1,148 +1,100 @@
-// ═══════════════════════════════════════════════════════════════
-// BACKUP — exportação completa (JSON/CSV) e histórico local
-// Extraído do app.js (Fase 4 da modularização)
-// ═══════════════════════════════════════════════════════════════
-
+// Backup dos dados da aplicação. Não substitui backup do projeto Supabase.
 import { showToast, formatarData } from './utils.js';
-import { sb } from './config.js';
+import { sb, SUPABASE_URL } from './config.js';
+import { state } from './state.js';
+import { csvCell, downloadBlob, fetchAllRows } from './data.js';
+import { collectBackupTables, collectBackupPhotos, buildBackup } from './backup-core.js';
+
+let backupRunning = false;
+function encodeBlob(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = () => reject(new Error('Falha ao codificar uma foto.'));
+        reader.readAsDataURL(blob);
+    });
+}
 
 export async function backupData(format) {
-    const jsonBtn = document.getElementById('backup-json-btn');
-    const csvBtn  = document.getElementById('backup-csv-btn');
-    const status  = document.getElementById('backup-status');
-    const btn = format === 'json' ? jsonBtn : csvBtn;
-    if (!btn) return;
-
-    btn.disabled = true;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<div class="spinner" style="display:inline-block;margin-right:6px"></div> A exportar...';
-    if (status) {
+    if (state.userRole !== 'admin') { showToast('Apenas administradores podem exportar o backup.', 'warning'); return false; }
+    if (backupRunning) return false;
+    if (!['json', 'csv'].includes(format)) return false;
+    backupRunning = true;
+    const buttons = ['backup-json-btn', 'backup-csv-btn'].map(id => document.getElementById(id)).filter(Boolean);
+    const status = document.getElementById('backup-status');
+    const progress = message => {
+        if (!status) return;
         status.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800';
-        status.textContent = 'A exportar todos os dados do Supabase... Aguarde, pode demorar alguns segundos.';
-        status.classList.remove('hidden');
-    }
-
+        status.textContent = message;
+    };
+    buttons.forEach(btn => { btn.disabled = true; });
+    const startedAt = new Date().toISOString();
     try {
-        // Cidadãos — busca paginada para suportar 25k+ registos
-        let cidadaos = [];
-        let offset = 0;
-        const PAGE = 1000;
-        while (true) {
-            const { data, error } = await sb.from('cidadaos')
-                .select('*')
-                .order('name', { ascending: true })
-                .range(offset, offset + PAGE - 1);
-            if (error) throw error;
-            cidadaos = [...cidadaos, ...(data || [])];
-            if (!data || data.length < PAGE) break;
-            offset += PAGE;
-        }
-
-        // Mapa de líderes construído a partir do próprio lote de cidadãos
-        // já buscado acima — evita depender de estado compartilhado externo.
-        const leaderMap = new Map(cidadaos.map(c => [c.id, c.name]));
-
-        // Demandas — todas de uma vez (geralmente menos registos)
-        const { data: demandas, error: errDemandas } = await sb
-            .from('demandas').select('*').order('created_at', { ascending: false });
-        if (errDemandas) throw errDemandas;
-
-        const hoje  = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-        const agora = new Date().toLocaleString('pt-BR');
-
+        progress('Iniciando exportação... Mantenha esta aba aberta.');
+        let total, partial = false;
+        const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
         if (format === 'json') {
-            const payload = {
-                exportado_em:    agora,
-                total_cidadaos:  cidadaos.length,
-                total_demandas:  (demandas||[]).length,
-                cidadaos,
-                demandas: demandas || []
-            };
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `backup_completo_${hoje}.json`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-
+            const tables = await collectBackupTables(sb, progress);
+            const photos = await collectBackupPhotos(sb, tables.cidadaos, SUPABASE_URL, encodeBlob, progress);
+            const payload = buildBackup(tables, photos, startedAt);
+            partial = photos.external.length > 0;
+            downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `backup_aplicacao_${hoje}.json`);
+            total = tables.cidadaos.length;
+            progress(`JSON gerado: ${Object.entries(payload.manifest.counts).map(([table, n]) => `${n} ${table}`).join('; ')}; ${photos.files.length} foto(s).${partial ? ` Atenção: ${photos.external.length} imagem(ns) externa(s) têm somente o link; consulte o manifesto.` : ''}`);
         } else {
-            // CSV com todos os campos dos cidadãos
-            const headers = [
-                'Nome','CPF','RG','Título Eleitor','Zona','Seção',
-                'Data Nasc.','Sexo','Tipo','Telefone','WhatsApp','Email',
-                'Profissão','Local Trabalho','Nome da Mãe','Nome do Pai',
-                'Logradouro','Número',
-                'Complemento','Bairro','Cidade','Estado','CEP',
-                'Liderança','Filhos','Filhas','Cadastrado em'
+            const cidadaos = await fetchAllRows(() => sb.from('cidadaos').select('*', { count: 'exact' }).order('name').order('id'));
+            const leaders = new Map(cidadaos.map(c => [c.id, c.name]));
+            const columns = [
+                ['Nome','name'],['CPF','cpf'],['RG','rg'],['Título Eleitor','voterid'],['Zona','zona'],['Seção','secao'],
+                ['Data Nasc.','dob'],['Sexo','sexo'],['Tipo','type'],['Telefone','phone'],['WhatsApp','whatsapp'],['Email','email'],
+                ['Profissão','profissao'],['Local Trabalho','localtrabalho'],['Nome da Mãe','nome_mae'],['Nome do Pai','nome_pai'],
+                ['Logradouro','logradouro'],['Número','numero'],['Complemento','complemento'],['Bairro','bairro'],['Cidade','cidade'],
+                ['Estado','estado'],['CEP','cep'],['Liderança','leader'],['Filhos','sons'],['Filhas','daughters'],['Cadastrado em','created_at']
             ];
-            const esc = v => {
-                const s = String(v ?? '');
-                return (s.includes(';') || s.includes('"') || s.includes('\n'))
-                    ? '"' + s.replace(/"/g, '""') + '"' : s;
-            };
-            const rows = cidadaos.map(c => [
-                c.name, c.cpf, c.rg, c.voterid, c.zona, c.secao,
-                c.dob ? formatarData(c.dob) : '',
-                c.sexo, c.type,
-                c.phone, c.whatsapp ? 'Sim' : 'Não', c.email,
-                c.profissao, c.localtrabalho, c.nome_mae, c.nome_pai,
-                c.logradouro, c.numero, c.complemento, c.bairro,
-                c.cidade, c.estado, c.cep,
-                leaderMap.get(c.leader) || '',
-                c.sons ?? 0, c.daughters ?? 0,
-                c.created_at ? new Date(c.created_at).toLocaleString('pt-BR') : ''
-            ]);
-            const csv = ['\uFEFF',
-                headers.map(esc).join(';'),
-                ...rows.map(r => r.map(esc).join(';'))
-            ].join('\r\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `backup_cidadaos_${hoje}.csv`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            const rows = cidadaos.map(c => columns.map(([, key]) => {
+                if (key === 'leader') return leaders.get(c.leader) || '';
+                if (key === 'dob') return c.dob ? formatarData(c.dob) : '';
+                if (key === 'whatsapp') return c.whatsapp ? 'Sim' : 'Não';
+                return c[key] ?? '';
+            }));
+            const csv = '\uFEFF' + [columns.map(([title]) => csvCell(title)).join(';'), ...rows.map(row => row.map(csvCell).join(';'))].join('\r\n');
+            downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `cadastro_cidadaos_${hoje}.csv`);
+            total = cidadaos.length;
+            progress(`CSV gerado com ${total} cidadãos. Este arquivo não inclui os demais módulos nem fotos. Use o JSON para exportar os dados da aplicação.`);
         }
-
-        // Regista no histórico local
-        const hist = JSON.parse(localStorage.getItem('backupHistory') || '[]');
-        hist.unshift({ data: agora, formato: format.toUpperCase(), total: cidadaos.length });
-        localStorage.setItem('backupHistory', JSON.stringify(hist.slice(0, 10)));
-        renderBackupHistory();
-
-        if (status) {
-            status.className = 'bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800';
-            status.textContent = `✅ Backup concluído! ${cidadaos.length} cidadãos exportados em ${agora}.`;
-        }
-        showToast(`Backup ${format.toUpperCase()} concluído!`, 'success');
-
-    } catch(e) {
-        console.error(e);
-        if (status) {
-            status.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800';
-            status.textContent = '❌ Erro ao exportar: ' + e.message;
-            status.classList.remove('hidden');
-        }
-        showToast('Erro no backup: ' + e.message, 'error');
+        if (status) status.className = `${partial ? 'bg-yellow-50 text-yellow-800' : 'bg-green-50 text-green-800'} border rounded-lg p-4 text-sm`;
+        // O histórico é auxiliar; uma falha de localStorage não invalida o download.
+        try {
+            const raw = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+            const hist = Array.isArray(raw) ? raw : [];
+            hist.unshift({ data: new Date().toLocaleString('pt-BR'), formato: format.toUpperCase(), total, parcial: partial });
+            localStorage.setItem('backupHistory', JSON.stringify(hist.slice(0, 10)));
+            renderBackupHistory();
+        } catch (error) { console.warn('Não foi possível registrar o histórico local.', error); }
+        showToast(partial ? 'Exportação gerada com ressalvas nas imagens externas.' : 'Exportação gerada com sucesso.', partial ? 'warning' : 'success');
+        return !partial;
+    } catch (error) {
+        console.error(error);
+        if (status) { status.className = 'bg-red-50 border rounded-lg p-4 text-sm text-red-800'; status.textContent = 'Exportação interrompida. Nenhum arquivo parcial foi gerado. ' + error.message; }
+        showToast('Erro na exportação: ' + error.message, 'error');
+        return false;
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
+        backupRunning = false;
+        buttons.forEach(btn => { btn.disabled = false; });
     }
 }
 
 export function renderBackupHistory() {
-    const el = document.getElementById('backup-history');
-    if (!el) return;
-    const hist = JSON.parse(localStorage.getItem('backupHistory') || '[]');
-    if (!hist.length) {
-        el.innerHTML = '<p class="text-gray-400 text-sm">Nenhum backup registado neste dispositivo.</p>';
-        return;
-    }
-    el.innerHTML = hist.map(h =>
-        `<div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-            <span class="text-gray-700 text-sm">${h.data}</span>
-            <div class="flex gap-3 text-xs items-center">
-                <span class="bg-gray-100 px-2 py-1 rounded font-medium">${h.formato}</span>
-                <span class="text-gray-500">${h.total} cidadãos</span>
-            </div>
-        </div>`
-    ).join('');
+    const container = document.getElementById('backup-history');
+    if (!container) return;
+    let hist = [];
+    try { const raw = JSON.parse(localStorage.getItem('backupHistory') || '[]'); if (Array.isArray(raw)) hist = raw; } catch { /* histórico inválido */ }
+    container.textContent = '';
+    if (!hist.length) { container.textContent = 'Nenhuma exportação registrada neste dispositivo.'; return; }
+    hist.slice(0, 10).forEach(h => {
+        const row = document.createElement('div');
+        row.className = 'py-2 border-b text-sm text-gray-700';
+        row.textContent = `${h.data} · ${h.formato} · ${h.total} cidadãos${h.parcial ? ' · com ressalvas' : ''}`;
+        container.appendChild(row);
+    });
 }

@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+import { fetchAllRows, csvCell, dateOnly, downloadBlob } from './data.js';
 // ═══════════════════════════════════════════════════════════════
 // COTAS DE COMBUSTÍVEL — registo, histórico (geral e por cidadão),
 // edição/remoção de registos, filtro por liderança e relatório
@@ -40,14 +42,14 @@ export function openCotaModal(cotaToEdit = null) {
     if (cotaToEdit) {
         $('cota-cidadao-id').value = cotaToEdit.cidadao?.id || cotaToEdit.cidadao_id || '';
         if (searchInput) searchInput.value = cotaToEdit.cidadao?.name || '';
-        $('cota-data').value = cotaToEdit.data || new Date().toISOString().slice(0, 10);
+        $('cota-data').value = cotaToEdit.data || dateOnly(new Date());
         $('cota-posto').value = cotaToEdit.posto || '';
         $('cota-litros').value = cotaToEdit.litros ?? '';
         $('cota-valor').value = cotaToEdit.valor ?? '';
         $('cota-observacao').value = cotaToEdit.observacao || '';
     } else {
         $('cota-cidadao-id').value = '';
-        $('cota-data').value = new Date().toISOString().slice(0, 10);
+        $('cota-data').value = dateOnly(new Date());
     }
     setupCotaCidadaoAutocomplete();
     const modal = $('cota-modal'), content = $('cota-modal-content');
@@ -267,12 +269,12 @@ export async function loadCotasPage(liderId = '') {
         tr.className = 'border-b hover:bg-gray-50';
         tr.innerHTML = `
             <td class="px-4 py-3">${c.data ? formatarData(c.data) : '—'}</td>
-            <td class="px-4 py-3 font-medium text-gray-800">${c.cidadao?.name || '(cidadão removido)'}</td>
-            <td class="px-4 py-3 text-gray-600">${leaderName(c.cidadao?.leader)}</td>
-            <td class="px-4 py-3">${c.litros != null ? c.litros + ' L' : '—'}</td>
+            <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.cidadao?.name || '(cidadão removido)')}</td>
+            <td class="px-4 py-3 text-gray-600">${escapeHtml(leaderName(c.cidadao?.leader))}</td>
+            <td class="px-4 py-3">${escapeHtml(c.litros != null ? c.litros + ' L' : '—')}</td>
             <td class="px-4 py-3">${c.valor != null ? 'R$ ' + Number(c.valor).toFixed(2) : '—'}</td>
-            <td class="px-4 py-3">${c.posto || '—'}</td>
-            <td class="px-4 py-3 text-xs text-gray-500">${c.registrado_por || '—'}</td>
+            <td class="px-4 py-3">${escapeHtml(c.posto || '—')}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${escapeHtml(c.registrado_por || '—')}</td>
             ${isAdmin ? '<td class="px-4 py-3 whitespace-nowrap"></td>' : ''}`;
         if (isAdmin) {
             const actionsTd = tr.lastElementChild;
@@ -314,16 +316,18 @@ export async function openCotaHistoryModal(cidadao) {
     modal.classList.remove('hidden');
     setTimeout(() => content?.classList.remove('scale-95', 'opacity-0'), 10);
 
-    const { data, error } = await sb.from('cotas_combustivel')
-        .select('id, data, litros, valor, posto, observacao')
-        .eq('cidadao_id', cidadao.id)
-        .order('data', { ascending: false });
-
-    if (error) {
+    currentHistoryData = [];
+    let data;
+    try {
+        data = await fetchAllRows(() => sb.from('cotas_combustivel')
+            .select('id, data, litros, valor, posto, observacao', { count: 'exact' })
+            .eq('cidadao_id', cidadao.id).order('data', { ascending: false }).order('id'));
+    } catch (error) {
         console.error(error);
-        listEl.innerHTML = '<p class="text-red-500 text-sm">Erro ao carregar histórico.</p>';
+        if (currentHistoryCidadao?.id === cidadao.id) listEl.textContent = 'Erro ao carregar histórico.';
         return;
     }
+    if (currentHistoryCidadao?.id !== cidadao.id) return;
     currentHistoryData = data || [];
     if (currentHistoryData.length === 0) {
         listEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Nenhuma cota registada para este cidadão.</p>';
@@ -344,11 +348,11 @@ export async function openCotaHistoryModal(cidadao) {
             <tbody>
                 ${currentHistoryData.map(c => `
                     <tr class="border-t border-gray-100">
-                        <td class="px-3 py-2">${formatarData(c.data)}</td>
-                        <td class="px-3 py-2">${c.litros != null ? c.litros + ' L' : '—'}</td>
+                        <td class="px-3 py-2">${escapeHtml(formatarData(c.data))}</td>
+                        <td class="px-3 py-2">${escapeHtml(c.litros != null ? c.litros + ' L' : '—')}</td>
                         <td class="px-3 py-2">${c.valor != null ? 'R$ ' + Number(c.valor).toFixed(2) : '—'}</td>
-                        <td class="px-3 py-2">${c.posto || '—'}</td>
-                        <td class="px-3 py-2 text-gray-500">${c.observacao || '—'}</td>
+                        <td class="px-3 py-2">${escapeHtml(c.posto || '—')}</td>
+                        <td class="px-3 py-2 text-gray-500">${escapeHtml(c.observacao || '—')}</td>
                     </tr>`).join('')}
             </tbody>
         </table>`;
@@ -369,18 +373,11 @@ export function downloadCotaHistoryCSV() {
         return;
     }
     const headers = ['Data', 'Litros', 'Valor (R$)', 'Posto', 'Observação'];
-    const esc = v => {
-        const s = String(v ?? '');
-        return (s.includes(';') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
+    const esc = csvCell;
     const rows = currentHistoryData.map(c => [formatarData(c.data), c.litros ?? '', c.valor ?? '', c.posto || '', c.observacao || '']);
     const csv = ['\uFEFF', headers.map(esc).join(';'), ...rows.map(r => r.map(esc).join(';'))].join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
     const nomeArquivo = currentHistoryCidadao.name.replace(/[^\p{L}\p{N}]+/gu, '_');
-    a.download = `abastecimento_${nomeArquivo}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `abastecimento_${nomeArquivo}.csv`);
 }
 
 export function printCotaHistory() {
@@ -392,11 +389,11 @@ export function printCotaHistory() {
     const totalValor = currentHistoryData.reduce((s, c) => s + (Number(c.valor) || 0), 0);
     const rowsHtml = currentHistoryData.map(c => `
         <tr>
-            <td>${formatarData(c.data)}</td>
-            <td>${c.litros != null ? c.litros + ' L' : '—'}</td>
+            <td>${escapeHtml(formatarData(c.data))}</td>
+            <td>${escapeHtml(c.litros != null ? c.litros + ' L' : '—')}</td>
             <td>${c.valor != null ? 'R$ ' + Number(c.valor).toFixed(2) : '—'}</td>
-            <td>${c.posto || '—'}</td>
-            <td>${c.observacao || '—'}</td>
+            <td>${escapeHtml(c.posto || '—')}</td>
+            <td>${escapeHtml(c.observacao || '—')}</td>
         </tr>`).join('');
     const win = window.open('', '_blank');
     if (!win) { showToast('O navegador bloqueou a janela de impressão.', 'error'); return; }
@@ -404,7 +401,7 @@ export function printCotaHistory() {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Histórico de Abastecimento — ${currentHistoryCidadao.name}</title>
+            <title>Histórico de Abastecimento — ${escapeHtml(currentHistoryCidadao.name)}</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 24px; color: #142235; }
                 h1 { font-size: 18px; margin-bottom: 2px; }
@@ -417,7 +414,7 @@ export function printCotaHistory() {
         </head>
         <body>
             <h1>Histórico de Abastecimento</h1>
-            <p class="sub">Cidadão: ${currentHistoryCidadao.name} — gerado em ${new Date().toLocaleString('pt-BR')}</p>
+            <p class="sub">Cidadão: ${escapeHtml(currentHistoryCidadao.name)} — gerado em ${new Date().toLocaleString('pt-BR')}</p>
             <table>
                 <thead><tr><th>Data</th><th>Litros</th><th>Valor</th><th>Posto</th><th>Observação</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
@@ -438,21 +435,12 @@ export function printCotaHistory() {
 // exatamente o pedido original.
 export async function generateCotasPorLiderancaExcel() {
     showToast('A gerar relatório...', 'info');
-    let cotas = [];
-    let offset = 0;
-    const PAGE = 1000;
-    while (true) {
-        const { data, error } = await sb.from('cotas_combustivel')
-            .select('litros, valor, cidadao:cidadaos(id, name, type, leader)')
-            .range(offset, offset + PAGE - 1);
-        if (error) {
-            console.error(error);
-            showToast('Erro ao gerar relatório: ' + error.message, 'error');
-            return;
-        }
-        cotas = [...cotas, ...(data || [])];
-        if (!data || data.length < PAGE) break;
-        offset += PAGE;
+    let cotas;
+    try {
+        cotas = await fetchAllRows(() => sb.from('cotas_combustivel')
+            .select('litros, valor, cidadao:cidadaos(id, name, type, leader)', { count: 'exact' }).order('id'));
+    } catch (error) {
+        showToast('Erro ao gerar relatório: ' + error.message, 'error'); return;
     }
     if (!cotas.length) {
         showToast('Nenhuma cota registada ainda.', 'warning');
@@ -481,15 +469,8 @@ export async function generateCotasPorLiderancaExcel() {
         .sort((a, b) => (b.totalValor - a.totalValor) || (b.totalLitros - a.totalLitros))
         .map(g => [g.nome, g.pessoas.size, g.registros, g.totalLitros.toFixed(1), g.totalValor.toFixed(2)]);
 
-    const esc = v => {
-        const s = String(v ?? '');
-        return (s.includes(';') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
+    const esc = csvCell;
     const csv = ['\uFEFF', headers.map(esc).join(';'), ...rows.map(r => r.map(esc).join(';'))].join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `cotas_por_lideranca_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `cotas_por_lideranca_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
     showToast('Relatório gerado!', 'success');
 }

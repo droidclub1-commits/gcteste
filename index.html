@@ -437,24 +437,24 @@
             <main id="backup-page" class="page hidden flex flex-col flex-1 overflow-hidden">
                 <header class="bg-white p-6 border-b flex-shrink-0">
                     <h1 class="text-2xl font-bold text-gray-800">Backup de Dados</h1>
-                    <p class="text-gray-600">Exporte uma cópia completa dos seus dados para guardar em segurança.</p>
+                    <p class="text-gray-600">Exporte os dados da aplicação e confira o escopo no manifesto do JSON.</p>
                 </header>
                 <div class="flex-1 overflow-y-auto p-6">
                     <div class="max-w-2xl space-y-6">
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                            <strong>Como funciona:</strong> Os dados são exportados directamente do Supabase para o seu computador em formato JSON e CSV. Guarde os ficheiros num local seguro — Google Drive, Dropbox, pen USB ou email.
+                            <strong>Como funciona:</strong> O JSON inclui cidadãos, demandas, notas, veículos, combustível, perfis visíveis e cópias das fotos do sistema. Imagens externas são identificadas no manifesto. O CSV contém somente cidadãos. Pause os lançamentos durante a exportação e guarde o arquivo em local seguro. Contas de acesso e configuração do servidor exigem backup próprio.
                         </div>
                         <div class="bg-white rounded-lg shadow-sm p-6">
-                            <h2 class="text-lg font-semibold text-gray-800 mb-1">Backup Completo</h2>
-                            <p class="text-sm text-gray-500 mb-4">Exporta <strong>todos os cidadãos e demandas</strong> sem filtros.</p>
+                            <h2 class="text-lg font-semibold text-gray-800 mb-1">Exportar dados da aplicação</h2>
+                            <p class="text-sm text-gray-500 mb-4">JSON: todos os módulos visíveis ao administrador e fotos do sistema. CSV: somente cidadãos, sem filtros.</p>
                             <div class="flex gap-3 flex-wrap">
                                 <button id="backup-json-btn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                                    Baixar JSON
+                                    Baixar JSON da aplicação
                                 </button>
                                 <button id="backup-csv-btn" class="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-5 rounded-lg">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                                    Baixar CSV (Excel)
+                                    Baixar CSV de cidadãos
                                 </button>
                             </div>
                         </div>

@@ -1,3 +1,4 @@
+import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
 // VEÍCULOS — aba dedicada com o total de veículos cadastrados, quantos
 // estão adesivados, filtro por tipo (Carro/Moto) e acesso rápido ao
@@ -113,13 +114,13 @@ export async function loadVeiculosPage(tipoFiltro = veiculosFiltroTipo) {
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-gray-50';
         tr.innerHTML = `
-            <td class="px-4 py-3 font-medium text-gray-800">${v.cidadao?.name || '(cidadão removido)'}</td>
-            <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold text-xs">${v.tipo}</span></td>
-            <td class="px-4 py-3 font-mono text-xs">${v.placa || '—'}</td>
-            <td class="px-4 py-3">${v.modelo || '—'}</td>
-            <td class="px-4 py-3">${v.cor || '—'}</td>
+            <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(v.cidadao?.name || '(cidadão removido)')}</td>
+            <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold text-xs">${escapeHtml(v.tipo)}</span></td>
+            <td class="px-4 py-3 font-mono text-xs">${escapeHtml(v.placa || '—')}</td>
+            <td class="px-4 py-3">${escapeHtml(v.modelo || '—')}</td>
+            <td class="px-4 py-3">${escapeHtml(v.cor || '—')}</td>
             <td class="px-4 py-3">${v.adesivado ? '<span class="text-green-600 font-semibold text-xs">Sim</span>' : '<span class="text-gray-400 text-xs">Não</span>'}</td>
-            <td class="px-4 py-3 text-gray-600 text-xs">${leaderName(v.cidadao?.leader)}</td>
+            <td class="px-4 py-3 text-gray-600 text-xs">${escapeHtml(leaderName(v.cidadao?.leader))}</td>
             <td class="px-4 py-3"></td>`;
         const actionsTd = tr.lastElementChild;
         if (v.cidadao) {

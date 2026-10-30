@@ -1,3 +1,4 @@
+import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
 // CIDADAOS — listagem/paginação server-side, filtros, CRUD, modal
 // de cadastro, modal de detalhes e cartão do cidadão.
@@ -18,6 +19,7 @@
 import { showToast, getInitials, formatarData, getFaixaEtaria, matchAmapaMunicipio } from './utils.js';
 import { sb } from './config.js';
 import { state } from './state.js';
+import { applyCidadaoFilters, fetchAllRows } from './data.js';
 
 const $ = id => document.getElementById(id);
 
@@ -42,6 +44,10 @@ let totalCidadaosCount = 0;
 let cidadaosServerOffset = 0;
 let serverSearchState = { search: '', type: '', bairro: '', cidade: '', leader: '', sexo: '', faixaEtaria: '', localTrabalho: '' };
 let currentEditingId = null;
+let vehiclesReady = false;
+let savingCitizen = false;
+let cidadaosLoadGeneration = 0;
+let loadingGeneration = null;
 let currentCidadaoIdForDetails = null;
 
 // Usado pelo botão "Exportar Excel" e por generatePrintReport em app.js
@@ -58,12 +64,7 @@ export function getTotalCidadaosCount() {
 
 export async function loadBairrosDistintos() {
     try {
-        const { data, error } = await sb
-            .from('cidadaos')
-            .select('bairro')
-            .not('bairro', 'is', null)
-            .order('bairro', { ascending: true });
-        if (error) throw error;
+        const data = await fetchAllRows(() => sb.from('cidadaos').select('bairro', { count: 'exact' }).not('bairro', 'is', null).order('id'));
         const bairrosUnicos = [...new Set(data.map(c => c.bairro).filter(Boolean))];
         // Guarda para o filtro sem precisar de state.allCidadaos
         window._bairrosDisponiveis = bairrosUnicos;
@@ -77,6 +78,10 @@ export async function loadBairrosDistintos() {
 export async function loadCidadaosPage(reset = false) {
     const cidadaosGrid = $('cidadaos-grid');
     if (!cidadaosGrid) return;
+    if (reset) cidadaosLoadGeneration++;
+    const generation = cidadaosLoadGeneration;
+    if (!reset && loadingGeneration === generation) return;
+    loadingGeneration = generation;
     if (reset) {
         cidadaosServerOffset = 0;
         cidadaosGrid.innerHTML = '';
@@ -84,38 +89,16 @@ export async function loadCidadaosPage(reset = false) {
     }
 
     const s = serverSearchState;
-    let query = sb.from('cidadaos').select('*', { count: 'exact' });
-
-    // Filtros aplicados no servidor
-    if (s.search) {
-        query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%,voterid.ilike.%${s.search}%`);
-    }
-    if (s.type)    query = query.eq('type', s.type);
-    if (s.bairro)  query = query.eq('bairro', s.bairro);
-    if (s.cidade)  query = query.eq('cidade', s.cidade);
-    if (s.leader)  query = query.eq('leader', s.leader);
-    if (s.sexo)    query = query.eq('sexo', s.sexo);
-    if (s.localTrabalho) query = query.ilike('localtrabalho', `%${s.localTrabalho}%`);
-
-    // Faixa etária: calcula intervalo de datas no servidor
-    if (s.faixaEtaria && s.faixaEtaria !== 'N/A') {
-        const hoje = new Date();
-        const faixas = {
-            '0-17':  [0, 17], '18-25': [18, 25], '26-35': [26, 35],
-            '36-50': [36, 50], '51-65': [51, 65], '66+':   [66, 150]
-        };
-        const [minAge, maxAge] = faixas[s.faixaEtaria] || [0, 150];
-        const maxDate = new Date(hoje); maxDate.setFullYear(hoje.getFullYear() - minAge);
-        const minDate = new Date(hoje); minDate.setFullYear(hoje.getFullYear() - maxAge - 1);
-        query = query.gte('dob', minDate.toISOString().split('T')[0])
-                     .lte('dob', maxDate.toISOString().split('T')[0]);
-    }
-
-    query = query
-        .order('name', { ascending: true })
+    const query = applyCidadaoFilters(sb.from('cidadaos').select('*', { count: 'exact' }), s)
+        .order('name').order('id')
         .range(cidadaosServerOffset, cidadaosServerOffset + CIDADAOS_PAGE_SIZE - 1);
 
-    const { data, error, count } = await query;
+    let response;
+    try { response = await query; }
+    catch (error) { response = { error }; }
+    if (generation !== cidadaosLoadGeneration) return;
+    if (loadingGeneration === generation) loadingGeneration = null;
+    const { data, error, count } = response;
     if (error) { console.error(error); showToast('Erro ao carregar cidadãos.', 'error'); return; }
 
     totalCidadaosCount = count ?? totalCidadaosCount;
@@ -179,6 +162,8 @@ export async function handleCidadaoFormSubmit(e) {
         showToast("Sessão expirada. Faça login novamente.", "error");
         return;
     }
+    if (savingCitizen) return;
+    savingCitizen = true;
     const saveBtn = $('save-btn');
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<div class="spinner"></div>';
@@ -186,6 +171,7 @@ export async function handleCidadaoFormSubmit(e) {
     const cpf = cidadaoCPF.value.trim() || null;
     const voterid = cidadaoVoterId.value.trim() || null;
     try {
+        if (!vehiclesReady) throw new Error('Não foi possível carregar os veículos. Reabra o cadastro antes de salvar.');
         const cidadaoPhotoUrl = $('cidadao-photo-url'), cidadaoPhotoUpload = $('cidadao-photo-upload');
         let photoUrl = cidadaoPhotoUrl.value;
         const file = cidadaoPhotoUpload.files[0];
@@ -255,26 +241,18 @@ export async function handleCidadaoFormSubmit(e) {
         // Veículos vivem numa tabela própria (1:N) — lidos do form à parte
         // e sincronizados depois de saber o id definitivo do cidadão.
         const veiculosData = getVeiculoData();
-        let cidadaoIdSalvo = currentEditingId;
-        if (currentEditingId) {
-            const { error } = await sb
-                .from('cidadaos')
-                .update(cidadaoData)
-                .eq('id', currentEditingId);
-            if (error) throw error;
-            showToast("Atualizado com sucesso!", "success");
-        } else {
-            delete cidadaoData.updated_at;
-            const { data: inserted, error } = await sb
-                .from('cidadaos')
-                .insert(cidadaoData)
-                .select('id')
-                .single();
-            if (error) throw error;
-            cidadaoIdSalvo = inserted.id;
-            showToast("Adicionado com sucesso!", "success");
+        const { error } = await sb.rpc('salvar_cidadao_com_veiculos_v2', {
+            p_id: currentEditingId,
+            p_cidadao: cidadaoData,
+            p_veiculos: veiculosData
+        });
+        if (error) {
+            if (error.code === 'PGRST202' || error.code === '42883') {
+                throw new Error('A atualização do banco ainda não foi aplicada. Execute sql/001_salvamento_atomico.sql antes de salvar.');
+            }
+            throw error;
         }
-        await saveVeiculosForCidadao(cidadaoIdSalvo, veiculosData);
+        showToast(currentEditingId ? 'Atualizado com sucesso!' : 'Adicionado com sucesso!', 'success');
         closeCidadaoModal();
         // Recarrega página e lista de bairros em paralelo (pode ter bairro novo)
         await Promise.all([
@@ -288,7 +266,7 @@ export async function handleCidadaoFormSubmit(e) {
         }
     } catch (error) {
         console.error(error);
-        let msg = "Erro ao salvar.";
+        let msg = error.message || "Erro ao salvar.";
         if (error.message.includes('duplicate key value violates unique constraint "cidadaos_cpf_key"')) {
             msg = "Este CPF já está cadastrado.";
         } else if (error.message.includes('duplicate key value violates unique constraint "cidadaos_voterid_key"')) {
@@ -296,7 +274,8 @@ export async function handleCidadaoFormSubmit(e) {
         }
         showToast(msg, "error");
     } finally {
-        saveBtn.disabled = false;
+        savingCitizen = false;
+        saveBtn.disabled = !vehiclesReady;
         saveBtn.innerHTML = 'Salvar';
     }
 }
@@ -426,7 +405,10 @@ export function clearCidadaoFilters() {
 }
 
 export async function openCidadaoModal(cidadaoId = null) {
+    if (savingCitizen) { showToast('Aguarde a conclusão do salvamento.', 'info'); return; }
     currentEditingId = cidadaoId;
+    vehiclesReady = false;
+    $('save-btn').disabled = true;
     const cidadaoForm = $('cidadao-form'), fileNameDisplay = $('file-name-display'),
           childrenDetailsContainer = $('children-details-container');
     cidadaoForm.reset();
@@ -435,7 +417,12 @@ export async function openCidadaoModal(cidadaoId = null) {
     const titleEl = $('cidadao-modal-title');
     if (cidadaoId) {
         titleEl.textContent = 'Editar Cidadão';
-        const cidadao = state.allCidadaos.find(c => c.id === cidadaoId);
+        let cidadao = state.allCidadaos.find(c => c.id === cidadaoId);
+        if (!cidadao) {
+            const result = await sb.from('cidadaos').select('*').eq('id', cidadaoId).single();
+            if (result.error || !result.data) { showToast('Não foi possível carregar o cidadão.', 'error'); return; }
+            cidadao = result.data;
+        }
         if (cidadao) {
             $('cidadao-name').value = cidadao.name || '';
             $('cidadao-email').value = cidadao.email || '';
@@ -475,12 +462,15 @@ export async function openCidadaoModal(cidadaoId = null) {
             $('cidadao-daughters').value = cidadao.daughters || 0;
             updateChildrenInputs('filho', cidadao.children);
             updateChildrenInputs('filha', cidadao.children);
-            await fillVeiculoSection(cidadaoId);
+            try { await fillVeiculoSection(cidadaoId); }
+            catch (error) { showToast('Falha ao carregar veículos. Nenhuma alteração foi salva. Reabra o cadastro.', 'error'); return; }
         }
     } else {
         titleEl.textContent = 'Adicionar Novo Cidadão';
         resetVeiculoSection();
     }
+    vehiclesReady = true;
+    $('save-btn').disabled = false;
     const cidadaoModal = $('cidadao-modal'), modalContent = $('modal-content');
     cidadaoModal.classList.remove('hidden');
     setTimeout(() => { modalContent.classList.remove('scale-95', 'opacity-0'); }, 10);
@@ -513,7 +503,7 @@ export function updateChildrenInputs(type, childrenData = null) {
     }
     for (let i = 0; i < count; i++) {
         const existingChild = (childrenData || []).find(c => c.type === type && c.index === i);
-        container.innerHTML += `<div class="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label class="block text-xs font-medium text-gray-600">${label} ${i + 1} - Nome</label><input type="text" data-type="${type}" data-index="${i}" data-field="name" class="w-full border border-gray-300 p-2 rounded-lg mt-1" value="${existingChild?.name || ''}"></div><div><label class="block text-xs font-medium text-gray-600">${label} ${i + 1} - Data Nasc.</label><input type="date" data-type="${type}" data-index="${i}" data-field="dob" class="w-full border border-gray-300 p-2 rounded-lg mt-1" value="${existingChild?.dob || ''}"></div></div>`;
+        container.innerHTML += `<div class="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label class="block text-xs font-medium text-gray-600">${label} ${i + 1} - Nome</label><input type="text" data-type="${type}" data-index="${i}" data-field="name" class="w-full border border-gray-300 p-2 rounded-lg mt-1" value="${escapeHtml(existingChild?.name || '')}"></div><div><label class="block text-xs font-medium text-gray-600">${label} ${i + 1} - Data Nasc.</label><input type="date" data-type="${type}" data-index="${i}" data-field="dob" class="w-full border border-gray-300 p-2 rounded-lg mt-1" value="${escapeHtml(existingChild?.dob || '')}"></div></div>`;
     }
 }
 
@@ -575,6 +565,7 @@ function createVeiculoRow(veiculo = null) {
             <button type="button" class="remove-veiculo-btn text-red-500 hover:text-red-700 text-xl leading-none" title="Remover veículo">&times;</button>
         </div>`;
     if (veiculo) {
+        row.dataset.id = veiculo.id;
         row.querySelector('.veiculo-tipo').value = veiculo.tipo || 'Carro';
         row.querySelector('.veiculo-placa').value = veiculo.placa || '';
         row.querySelector('.veiculo-modelo').value = veiculo.modelo || '';
@@ -623,7 +614,7 @@ function resetVeiculoSection() {
 // Busca os veículos já salvos do cidadão (usado ao editar e na ficha de detalhes).
 async function fetchVeiculosDoCidadao(cidadaoId) {
     const { data, error } = await sb.from('veiculos').select('*').eq('cidadao_id', cidadaoId).order('created_at', { ascending: true });
-    if (error) { console.error(error); return []; }
+    if (error) throw error;
     return data || [];
 }
 
@@ -640,11 +631,12 @@ async function fillVeiculoSection(cidadaoId) {
 }
 
 // Lê a lista de veículos do formulário — cada linha vira um registo na
-// tabela `veiculos` (ver saveVeiculosForCidadao).
+// tabela `veiculos`, sincronizada pela função SQL transacional.
 function getVeiculoData() {
     const possui = $('cidadao-possui-veiculo-sim').checked;
     if (!possui) return [];
     return [...document.querySelectorAll('#veiculos-lista .veiculo-row')].map(row => ({
+        id: row.dataset.id || null,
         tipo: row.querySelector('.veiculo-tipo').value,
         placa: (row.querySelector('.veiculo-placa').value || '').trim().toUpperCase() || null,
         modelo: (row.querySelector('.veiculo-modelo').value || '').trim() || null,
@@ -653,18 +645,6 @@ function getVeiculoData() {
     }));
 }
 
-// Substitui todos os veículos do cidadão pelos que estão no formulário.
-async function saveVeiculosForCidadao(cidadaoId, veiculosData) {
-    const { error: delError } = await sb.from('veiculos').delete().eq('cidadao_id', cidadaoId);
-    if (delError) throw delError;
-    if (veiculosData.length > 0) {
-        const { error: insError } = await sb.from('veiculos')
-            .insert(veiculosData.map(v => ({ ...v, cidadao_id: cidadaoId })));
-        if (insError) throw insError;
-    }
-}
-
-// Resumo textual (carros/motos/adesivados) pro modal de detalhes.
 function formatVeiculoResumo(veiculos) {
     if (!veiculos.length) return 'Não possui';
     const carros = veiculos.filter(v => v.tipo === 'Carro').length;
@@ -688,7 +668,7 @@ function renderVeiculosDetalhes(veiculos) {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5';
         const info = [v.tipo, v.placa, v.modelo, v.cor].filter(Boolean).join(' · ');
-        item.innerHTML = `<span>${info}</span>${v.adesivado ? '<span class="text-green-600 font-semibold ml-2">Adesivado</span>' : ''}`;
+        item.innerHTML = `<span>${escapeHtml(info)}</span>${v.adesivado ? '<span class="text-green-600 font-semibold ml-2">Adesivado</span>' : ''}`;
         listEl.appendChild(item);
     });
 }
@@ -736,11 +716,19 @@ export async function openDetailsModal(cidadaoId) {
     const detailsModal = $('cidadao-details-modal');
     const content = detailsModal.querySelector('.transform');
     const photoEl = $('details-photo');
-    if (cidadao.photourl) {
-        photoEl.innerHTML = `<img src="${cidadao.photourl}" alt="${cidadao.name}" class="w-24 h-24 rounded-full object-cover bg-gray-200" onerror="this.src='https://placehold.co/100x100/E2E8F0/64748B?text=${getInitials(cidadao.name)}'">`;
-    } else {
-        photoEl.innerHTML = `<div class="w-24 h-24 rounded-full bg-blue-500 text-white flex items-center justify-center text-4xl font-bold">${getInitials(cidadao.name)}</div>`;
-    }
+    photoEl.textContent = '';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'w-24 h-24 rounded-full bg-blue-500 text-white flex items-center justify-center text-4xl font-bold';
+    placeholder.textContent = getInitials(cidadao.name);
+    let photoUrl;
+    try { const parsed = new URL(cidadao.photourl); if (['http:', 'https:'].includes(parsed.protocol)) photoUrl = parsed.href; } catch { /* sem foto válida */ }
+    if (photoUrl) {
+        const image = document.createElement('img');
+        image.className = 'w-24 h-24 rounded-full object-cover bg-gray-200';
+        image.alt = cidadao.name || ''; image.src = photoUrl;
+        image.onerror = () => { image.replaceWith(placeholder); };
+        photoEl.appendChild(image);
+    } else { photoEl.appendChild(placeholder); }
     $('details-name').textContent = cidadao.name;
     $('details-type').textContent = cidadao.type;
     $('details-email').textContent = cidadao.email || 'Não informado';
@@ -763,14 +751,17 @@ export async function openDetailsModal(cidadaoId) {
     $('details-local-trabalho').textContent = cidadao.localtrabalho || 'Não informado';
     const leader = state.allLeaders.find(l => l.id === cidadao.leader);
     $('details-leader').textContent = leader ? leader.name : 'Nenhuma';
-    fetchVeiculosDoCidadao(cidadao.id).then(renderVeiculosDetalhes);
+    fetchVeiculosDoCidadao(cidadao.id).then(renderVeiculosDetalhes).catch(() => {
+        $('details-veiculo-resumo').textContent = 'Não foi possível carregar os veículos.';
+        $('details-veiculos-list').textContent = '';
+    });
     const historyBtn = $('details-view-cotas-btn');
     if (historyBtn) historyBtn.onclick = () => _onOpenCotaHistory(cidadao);
     const childrenEl = $('details-children');
     const totalFilhos = (cidadao.sons || 0) + (cidadao.daughters || 0);
     childrenEl.innerHTML = `<strong>Família:</strong> ${totalFilhos} filho(s)`;
     if (cidadao.children && cidadao.children.length > 0) {
-        const childrenList = cidadao.children.map(c => `<li class="text-sm ml-4">${c.name} (${formatarData(c.dob)})</li>`).join('');
+        const childrenList = cidadao.children.map(c => `<li class="text-sm ml-4">${escapeHtml(c.name)} (${escapeHtml(formatarData(c.dob))})</li>`).join('');
         childrenEl.innerHTML += `<ul class="list-disc list-inside">${childrenList}</ul>`;
     }
     $('details-view-map-btn').onclick = () => {
