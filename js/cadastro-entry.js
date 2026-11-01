@@ -1,3 +1,4 @@
+import { getCampaign } from './campaign-model.js';
 import { sb } from './config.js';
 import { state } from './state.js';
 import { parseImportCSV, CSV_MODEL } from './import-format.js';
@@ -11,7 +12,7 @@ function lockPending(){for(const el of document.querySelectorAll('#entry-modal i
 export function resetEntryUI(){version++;busy=false;rows=[];preview=null;pending=null;$('entry-modal')?.classList.add('hidden');$('entry-rows')?.replaceChildren();$('entry-review')?.classList.add('hidden');$('entry-quick')?.reset();if($('entry-file'))$('entry-file').value='';if($('entry-status'))$('entry-status').textContent='';}
 export function applyEntryAccessUI(){document.querySelectorAll('[data-import-admin]').forEach(el=>el.classList.toggle('hidden',!allowed()||state.userRole!=='admin'));if(!allowed())resetEntryUI();}
 function open(nextMode){if(!allowed()||(nextMode==='import'&&state.userRole!=='admin'))return;
- if(!pending){resetEntryUI();mode=nextMode;$('entry-title').textContent=mode==='quick'?'Cadastro rápido':'Importar cidadãos';$('entry-quick').classList.toggle('hidden',mode!=='quick');$('entry-import').classList.toggle('hidden',mode!=='import');setBusy(false);}
+ if(!pending){resetEntryUI();mode=nextMode;if(mode==='quick'){$('entry-cidade').value=getCampaign().revision?getCampaign().city:'';$('entry-estado').value=getCampaign().revision?getCampaign().uf:'';}$('entry-title').textContent=mode==='quick'?'Cadastro rápido':'Importar cidadãos';$('entry-quick').classList.toggle('hidden',mode!=='quick');$('entry-import').classList.toggle('hidden',mode!=='import');setBusy(false);}
  $('entry-modal').classList.remove('hidden');$(mode==='quick'?'entry-name':'entry-file')?.focus();
 }
 function invalidate(){if(busy||pending)return;version++;preview=null;rows=[];$('entry-review').classList.add('hidden');$('entry-rows').replaceChildren();$('entry-status').textContent='Dados alterados. Confira novamente antes de gravar.';}

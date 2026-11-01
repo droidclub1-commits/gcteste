@@ -9,7 +9,7 @@
 | Alta | Responsável, prazo e prioridade nas demandas | Concluído |
 | Alta | Histórico de alterações e exclusões | Concluído |
 | Média | Cadastro rápido e importação com revisão de duplicidades | Concluído |
-| Média | Configuração por campanha e município | Pendente |
+| Média | Configuração por campanha e município | Concluído |
 
 Combustível permanece exclusivo do administrador, inclusive na API.
 

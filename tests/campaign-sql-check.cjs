@@ -1,0 +1,22 @@
+const {PGlite}=require('@electric-sql/pglite');const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const admin='11111111-1111-4111-8111-111111111111',user='22222222-2222-4222-8222-222222222222';
+(async()=>{const db=new PGlite();try{
+ await db.exec(require('./fixtures/application-schema.cjs')(admin,user));
+ await db.exec(`CREATE ROLE service_role; ALTER TABLE demandas ADD COLUMN description text; ALTER TABLE demandas ADD COLUMN status text NOT NULL DEFAULT 'pending'; ALTER TABLE demandas ADD COLUMN created_at timestamptz DEFAULT now(); ALTER TABLE demandas ADD COLUMN updated_at timestamptz DEFAULT now(); ALTER TABLE notes ADD COLUMN author text; ALTER TABLE cidadaos ADD COLUMN phone text; ALTER TABLE cidadaos ADD COLUMN whatsapp boolean; ALTER TABLE cidadaos ADD COLUMN email text; ALTER TABLE cidadaos ADD COLUMN dob date; ALTER TABLE cidadaos ADD COLUMN bairro text; ALTER TABLE cidadaos ADD COLUMN cidade text; ALTER TABLE cidadaos ADD COLUMN estado text; ALTER TABLE cidadaos ADD COLUMN type text;`);
+ for(const file of ['003_backup_restauracao.sql','004_demandas_acompanhamento.sql','005_historico_auditoria.sql','006_cadastro_importacao.sql','007_configuracao_campanha.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../sql',file),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../sql/007_configuracao_campanha.sql'),'utf8'));
+ const q=async(s,a=[])=>(await db.query(s,a)).rows;const get=async()=>(await q('SELECT * FROM campanha_config'))[0];const payload=c=>Object.fromEntries(Object.entries(c).filter(([k])=>!['id','revision','updated_at'].includes(k)));
+ const save=async(data,version)=>(await q('SELECT salvar_configuracao_campanha_v1($1::jsonb,$2) AS d',[JSON.stringify(data),version]))[0].d;
+ await db.exec(`SET ROLE anon;`);let settings=await get();assert.equal(settings.city,'Macapá');await assert.rejects(save(payload(settings),settings.revision),/permission denied/);await assert.rejects(q("UPDATE campanha_config SET app_name='X'"),/permission denied/);
+ await db.exec(`RESET ROLE;SET ROLE authenticated;SET request.jwt.claim.sub='${user}';`);settings=await get();await assert.rejects(save(payload(settings),settings.revision),/administrador/);assert.equal((await q("UPDATE campanha_config SET app_name='X' RETURNING id")).length,0);
+ await db.exec(`SET request.jwt.claim.sub='${admin}';`);const original=payload(settings), changed={...original,app_name:'Sistema teste',city:'belem',uf:'pa',municipalities:['Belém','Ananindeua'],map_lat:-1.45,map_lng:-48.49,theme:'green',campaign_name:'Campanha de teste',election_year:2028};
+ const saved=await save(changed,settings.revision);assert.equal(saved.city,'Belém');assert.equal(saved.uf,'PA');assert.equal(Number(saved.revision),Number(settings.revision)+1);
+ await assert.rejects(save(changed,settings.revision),/outra sessão/);
+ const logs=(await q("SELECT auditoria_listar_v1(p_tabela=>'campanha_config') AS d"))[0].d;assert.equal(logs.events.length,1);const detail=(await q('SELECT auditoria_detalhe_v1($1) AS d',[logs.events[0].id]))[0].d;assert.equal(detail.before_data.uf,'AP');assert.equal(detail.after_data.uf,'PA');assert.equal(detail.actor_id,admin);
+ const noChange=await save(payload(saved),saved.revision);assert.equal(noChange.revision,saved.revision);
+ for(const patch of [{municipalities:['Belém','BELEM']},{city:'Outra'},{map_lat:99},{uf:'XX'},{theme:'invalid'},{id:2}])await assert.rejects(save({...payload(saved),...patch},saved.revision));
+ assert.equal((await get()).uf,'PA');await assert.rejects(q('DELETE FROM campanha_config'),/permission denied/);await assert.rejects(q('UPDATE campanha_config SET revision=1'),/permission denied/);
+ const backup=(await q('SELECT exportar_aplicacao_v1() AS d'))[0].d;assert(!Object.hasOwn(backup,'campanha_config'));
+ await q('SELECT restaurar_aplicacao_v1($1::jsonb)',[JSON.stringify(backup)]);assert.equal((await get()).uf,'PA');
+ console.log('PASS: configuração pública sem dados privados, edição restrita ao admin, validação, concorrência, auditoria e preservação na restauração.');
+ }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -121,3 +121,17 @@ A importação confere toda a base acessível ao administrador; o cadastro rápi
 Selecione as linhas que deseja criar; nenhuma vem selecionada. Os registros existentes não são mesclados nem atualizados. O lote selecionado é gravado em uma única transação, com autoria da sessão e histórico de auditoria. A confirmação revalida a prévia sob bloqueio de gravação; mudanças nas coincidências exigem nova conferência. Se uma linha selecionada falhar, todo o lote é revertido.
 
 Se a resposta de rede não for confirmada, mantenha o diálogo aberto e use Tentar novamente / conferir resultado: o mesmo identificador recupera o recibo sem repetir o lote. Não recarregue a página durante essa conferência; o pedido pendente fica apenas na memória da sessão. Recibos ficam no esquema cadastro_private, separados dos dados restauráveis. O backup completo do banco deve incluí-los.
+
+## Configuração por campanha e município
+
+Aplique `sql/007_configuracao_campanha.sql` depois das instalações anteriores. A instalação inicial mantém o nome atual e os municípios do Amapá; nenhuma campanha, candidato ou ano são inventados, e os endereços existentes não são alterados.
+
+O administrador acessa Configuração da campanha no menu. Campos: nome do sistema, nome da campanha, nome público do candidato (opcional), ano (opcional), município principal/UF, municípios atendidos, centro e zoom inicial do mapa e tema (azul, verde, roxo ou vinho). O município principal deve constar na lista, que aceita até 200 nomes sem repetição. A identificação e as opções são públicas, usadas também na página de cadastro público; nunca informe senhas, chaves ou dados privados nesses campos.
+
+A configuração altera os títulos, a identificação da campanha, o tema, as opções de município, os padrões de novos cadastros e o centro do mapa quando não há pontos. O relatório impresso identifica a campanha e o município principal. Endereços existentes, inclusive de outras localidades, são preservados ao editar. As localidades já presentes nos registros visíveis continuam disponíveis nos filtros. A consulta de CEP usa a UF retornada pelo ViaCEP e preserva a localidade mesmo fora da lista configurada.
+
+Somente administradores podem salvar. A edição compara a revisão carregada para evitar sobrescrever uma alteração de outra sessão; use Recarregar configuração quando houver conflito. Alterações são registradas no Histórico do sistema, com valores anteriores e posteriores. Outras abas e sessões recebem novas configurações ao recarregar.
+
+Baixar configuração salva gera um JSON só com esses parâmetros. Carregar configuração JSON preenche o formulário para revisão e exige Salvar configuração para aplicar. O backup/restauração dos dados da aplicação não substitui a configuração: preserve também esse JSON, além do backup completo do banco.
+
+Há uma campanha por instalação. Trocar o nome da campanha ou município não cria uma nova base nem isola dados entre clientes. Para um novo cliente, use implantação e projeto Supabase separados, configure os endpoints/chaves públicas do cliente em `js/config.js` e `cadastro-publico.js`, instale o esquema/políticas/funções e publique sua própria interface. Contas, segredos, domínio, Edge Functions, logomarca e ícones exigem configuração própria da implantação. Os scripts de evolução em `sql/` pressupõem o esquema original e não provisionam sozinhos um projeto vazio.

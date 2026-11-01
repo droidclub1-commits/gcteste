@@ -1,3 +1,5 @@
+import { getCampaign, setCampaign, applyCampaignDOM, matchMunicipality, setCityValue } from './js/campaign-model.js';
+let publicConfigReady=false;
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO
 // ═══════════════════════════════════════════════════════════════
@@ -41,19 +43,15 @@ function applyMask(id, mask) {
     });
 }
 
-// ── Municípios do Amapá — mesma lista/normalização usada no app principal
-// (utils.js), duplicada aqui porque este arquivo é script isolado, sem
-// módulos ES (ver <script> em cadastro-publico.html).
-const AMAPA_MUNICIPIOS = [
-    'Amapá', 'Calçoene', 'Cutias', 'Ferreira Gomes', 'Itaubal', 'Laranjal do Jari',
-    'Macapá', 'Mazagão', 'Oiapoque', 'Pedra Branca do Amapari', 'Porto Grande',
-    'Pracuúba', 'Santana', 'Serra do Navio', 'Tartarugalzinho', 'Vitória do Jari'
-];
-function matchAmapaMunicipio(raw) {
-    if (!raw) return '';
-    const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
-    const alvo = norm(raw);
-    return AMAPA_MUNICIPIOS.find(m => norm(m) === alvo) || '';
+// A identidade e os municípios são públicos; credenciais de acesso continuam no servidor.
+async function loadPublicCampaign(){
+ try{
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+  let response;try{response=await fetch(`${SUPABASE_URL}/rest/v1/campanha_config?id=eq.1&select=*`,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`},cache:'no-store',signal:controller.signal});}finally{clearTimeout(timer);}
+  if(!response.ok)throw new Error('Configuração indisponível.');const rows=await response.json();if(!rows[0])throw new Error('Configuração não encontrada.');
+  setCampaign(rows[0]);applyCampaignDOM();setCityValue(document.getElementById('c-cidade'),getCampaign().city);document.getElementById('c-estado').value=getCampaign().uf;
+  publicConfigReady=true;document.getElementById('save-btn-public').disabled=false;
+ }catch{showToast('Não foi possível carregar a configuração. Recarregue a página antes de cadastrar.','error');}
 }
 
 // ── Busca automática de endereço pelo CEP (ViaCEP) ──────────────────
@@ -71,11 +69,11 @@ async function handleCEPBlurPublic(e) {
         } else {
             document.getElementById('c-logradouro').value = data.logradouro || '';
             document.getElementById('c-bairro').value = data.bairro || '';
-            const municipio = matchAmapaMunicipio(data.localidade);
-            document.getElementById('c-cidade').value = municipio;
-            document.getElementById('c-estado').value = 'AP';
+            const municipio = matchMunicipality(data.localidade);
+            setCityValue(document.getElementById('c-cidade'),municipio || data.localidade);
+            document.getElementById('c-estado').value = data.uf || '';
             if (!municipio && data.localidade) {
-                showToast(`CEP é de "${data.localidade}" — fora da lista de municípios do Amapá. Selecione manualmente.`, 'warning');
+                showToast(`CEP é de "${data.localidade}" — fora da lista configurada. Município e UF do CEP foram preservados.`, 'warning');
             }
             document.getElementById('c-numero').focus();
         }
@@ -107,6 +105,7 @@ async function callFunction(payload) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    loadPublicCampaign();
     applyMask('c-cpf', '999.999.999-99');
     applyMask('c-phone', '(99) 99999-9999');
     applyMask('c-cep', '99999-999');
@@ -176,6 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     cidadaoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if(!publicConfigReady){showToast('Recarregue a página para carregar a configuração.','error');return;}
         const v = s => (s && s.trim()) ? s.trim() : null;
         const name = document.getElementById('c-name').value.trim();
         if (!name) {
@@ -250,6 +250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             showToast('Cidadão cadastrado com sucesso!', 'success');
             cidadaoForm.reset();
+            setCityValue(document.getElementById('c-cidade'),getCampaign().city);
+            document.getElementById('c-estado').value=getCampaign().uf;
             document.getElementById('c-name').focus();
         } catch (err) {
             console.error(err);

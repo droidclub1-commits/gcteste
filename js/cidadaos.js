@@ -1,3 +1,4 @@
+import { getCampaign, setCityValue, setKnownCities } from './campaign-model.js';
 import { renderCitizenPhoto, storagePhotoRef } from './photos.js';
 import { canAccessFuel } from './fuel-access.js';
 import { escapeHtml } from './utils.js';
@@ -66,10 +67,11 @@ export function getTotalCidadaosCount() {
 
 export async function loadBairrosDistintos() {
     try {
-        const data = await fetchAllRows(() => sb.from('cidadaos').select('bairro', { count: 'exact' }).not('bairro', 'is', null).order('id'));
+        const data = await fetchAllRows(() => sb.from('cidadaos').select('bairro,cidade', { count: 'exact' }).order('id'));
         const bairrosUnicos = [...new Set(data.map(c => c.bairro).filter(Boolean))];
         // Guarda para o filtro sem precisar de state.allCidadaos
         window._bairrosDisponiveis = bairrosUnicos;
+        setKnownCities(data.map(c => c.cidade));
     } catch (e) {
         console.warn('Não foi possível carregar bairros:', e);
         window._bairrosDisponiveis = [];
@@ -410,6 +412,8 @@ export async function openCidadaoModal(cidadaoId = null) {
     const cidadaoForm = $('cidadao-form'), fileNameDisplay = $('file-name-display'),
           childrenDetailsContainer = $('children-details-container');
     cidadaoForm.reset();
+    setCityValue($('cidadao-cidade'),getCampaign().revision?getCampaign().city:'');
+    $('cidadao-estado').value=getCampaign().revision?getCampaign().uf:'';
     fileNameDisplay.textContent = 'Nenhum ficheiro selecionado';
     childrenDetailsContainer.innerHTML = '';
     const titleEl = $('cidadao-modal-title');
@@ -454,8 +458,8 @@ export async function openCidadaoModal(cidadaoId = null) {
             $('cidadao-bairro').value = cidadao.bairro || '';
             // Normaliza município antigo (pode ter grafia diferente da opção
             // do select, já que o campo antes era texto livre) pra opção certa.
-            $('cidadao-cidade').value = matchAmapaMunicipio(cidadao.cidade);
-            $('cidadao-estado').value = 'AP';
+            setCityValue($('cidadao-cidade'),cidadao.cidade);
+            $('cidadao-estado').value = cidadao.estado || '';
             $('cidadao-sons').value = cidadao.sons || 0;
             $('cidadao-daughters').value = cidadao.daughters || 0;
             updateChildrenInputs('filho', cidadao.children);
@@ -684,10 +688,10 @@ export async function handleCEPBlur(e) {
                 $('cidadao-logradouro').value = data.logradouro;
                 $('cidadao-bairro').value = data.bairro;
                 const municipio = matchAmapaMunicipio(data.localidade);
-                $('cidadao-cidade').value = municipio;
-                $('cidadao-estado').value = 'AP';
+                setCityValue($('cidadao-cidade'),municipio || data.localidade);
+                $('cidadao-estado').value = data.uf || '';
                 if (!municipio && data.localidade) {
-                    showToast(`CEP é de "${data.localidade}" — fora da lista de municípios do Amapá. Selecione manualmente.`, 'warning');
+                    showToast(`CEP é de "${data.localidade}" — fora da lista configurada. Município e UF do CEP foram preservados.`, 'warning');
                 }
                 $('cidadao-numero').focus();
             }
