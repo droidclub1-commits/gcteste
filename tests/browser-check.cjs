@@ -63,7 +63,18 @@ const server = http.createServer((req, res) => {
                         }
                     }; return q;
                 },
-                async rpc(name, args) { window.__rpcCalls.push({ name, args }); return { data: args?.p_id || 'new-citizen', error: window.__rpcError || null }; }
+                async rpc(name, args) {
+                    window.__rpcCalls.push({ name, args });
+                    if (name === 'exportar_aplicacao_v1') {
+                        if (window.__failTable) return { error: { message: 'simulated read failure' } };
+                        return { data: structuredClone(Object.fromEntries(['cidadaos','demandas','notes','veiculos','cotas_combustivel'].map(k=>[k,window.__db[k]]))) };
+                    }
+                    if (name === 'restaurar_aplicacao_v1') return args.p_validar_apenas
+                        ? { data: { valid:true, counts:Object.fromEntries(Object.entries(args.p_backup).map(([k,v])=>[k,v.length])), current_counts:{cidadaos:1205},expected_state:'test-state' } }
+                        : { data: {restored:true} };
+                    if (name === 'copias_recuperacao_v1') return {data:[]};
+                    return { data: args?.p_id || 'new-citizen', error: window.__rpcError || null };
+                }
             };
             window.supabase = { createClient: () => window.__client };
             window.Chart = class { constructor(ctx, config) { window.__charts.push({ id: ctx.id, config }); } destroy() {} };
@@ -133,14 +144,49 @@ const server = http.createServer((req, res) => {
         console.log('PASS: histórico e CSV incluem 1.205 cotas; HTML e fórmulas ficam neutralizados.');
 
         // Exportação JSON completa sem dados reais e sem acessar servidores externos.
-        await page.evaluate(() => { window.__db.profiles = [{ id: 'u1', role: 'admin' }]; });
+        await page.evaluate(() => {
+            window.__db.profiles = [{ id: 'u1', role: 'admin' }];
+            window.__db.cidadaos.forEach((c,i)=>{c.id='00000000-0000-4000-8000-'+i.toString(16).padStart(12,'0');});
+            const owner=window.__db.cidadaos[0].id;
+            window.__db.veiculos.forEach(v=>{v.id=crypto.randomUUID();v.cidadao_id=owner;});
+            window.__db.cotas_combustivel.forEach(c=>{c.id=crypto.randomUUID();c.cidadao_id=owner;});
+            window.__db.demandas.forEach(d=>{d.id=crypto.randomUUID();d.cidadao_id=owner;});
+        });
         const backupDownload = page.waitForEvent('download');
         await page.evaluate(async () => { const { backupData } = await import('/js/backup.js'); await backupData('json'); });
         const backupFile = await backupDownload;
         const payload = JSON.parse(fs.readFileSync(await backupFile.path(), 'utf8'));
         assert.equal(payload.cidadaos.length, 1205); assert.equal(payload.cotas_combustivel.length, 1205);
-        assert.equal(payload.veiculos.length, 1); assert.equal(payload.manifest.counts.profiles, 1);
+        assert.equal(payload.veiculos.length, 1); assert.equal(payload.schema_version, 3); assert.equal(payload.manifest.consistent_snapshot, true);
         console.log('PASS: botão JSON exporta todos os módulos paginados.');
+        await page.evaluate(async()=>{const ui=await import('/js/restore.js');ui.setupRestoreUI();});
+        await page.locator('#restore-file').setInputFiles({ name:'backup.json', mimeType:'application/json', buffer:Buffer.from(JSON.stringify(payload)) });
+        await page.locator('#restore-validate').click();
+        // Aguarda a conferência assíncrona do checksum e a prévia.
+        for(let i=0;i<50;i++) {
+            if (await page.evaluate(()=>!document.getElementById('restore-review').classList.contains('hidden'))) break;
+            await new Promise(resolve=>require('node:timers').setTimeout(resolve,20));
+        }
+        assert.equal(await page.evaluate(()=>document.querySelectorAll('#restore-counts tr').length),5);
+        await page.locator('#restore-commit').click();
+        assert.match(await page.locator('#restore-status').textContent(),/Marque a confirmação/);
+        console.log('PASS: arquivo conferido mostra cinco módulos; restauração exige confirmação explícita.');
+        await page.evaluate(()=>{
+            const timeout=window.setTimeout;
+            window.setTimeout=(fn,ms,...args)=>ms===1800?0:timeout(fn,ms,...args);
+            document.getElementById('restore-confirm').value='RESTAURAR';
+            document.getElementById('restore-ack').checked=true;
+        });
+        await page.locator('#restore-commit').click();
+        for(let i=0;i<50;i++) {
+            if ((await page.locator('#restore-status').textContent()).includes('Restauração concluída')) break;
+            await new Promise(resolve=>require('node:timers').setTimeout(resolve,20));
+        }
+        assert.match(await page.locator('#restore-status').textContent(),/Restauração concluída/);
+        assert.equal(await page.evaluate(()=>window.__rpcCalls.filter(c=>c.name==='restaurar_aplicacao_v1' && c.args.p_validar_apenas===false).length),1);
+        console.log('PASS: confirmação envia uma única restauração e apresenta a conclusão.');
+
+
         const failedBackup = await page.evaluate(async () => {
             window.__failTable = 'veiculos';
             const { backupData } = await import('/js/backup.js');
@@ -179,6 +225,18 @@ const server = http.createServer((req, res) => {
         });
         assert.equal(await page.evaluate(() => document.querySelector('[data-fuel-admin] a[href="#cotas"]').parentElement.classList.contains('hidden')),false);
         console.log('PASS: administrador mantém o acesso ao combustível.');
+        const photo = await page.evaluate(async()=>{
+            let requested;
+            window.__client.storage={from:()=>({createSignedUrl:async(path)=>{requested=path;return{data:{signedUrl:'https://example.test/signed-image'}};}})};
+            const {resolvePhotoUrl,renderCitizenPhoto}=await import('/js/photos.js');
+            const signed=await resolvePhotoUrl('storage://fotos-cidadaos/owner/foto.png');
+            const node=document.createElement('div');document.body.appendChild(node);
+            renderCitizenPhoto(node,'javascript:alert(1)','<img onerror=alert(1)>');
+            await Promise.resolve();await Promise.resolve();
+            return{signed,requested,images:node.querySelectorAll('img').length};
+        });
+        assert.equal(photo.requested,'owner/foto.png');assert.equal(photo.signed,'https://example.test/signed-image');assert.equal(photo.images,0);
+        console.log('PASS: fotos internas usam URL assinada; conteúdo inválido não injeta imagem ou código.');
         assert.deepEqual(errors, []);
         console.log('PASS: nenhum erro JavaScript não tratado no navegador.');
     } finally { await browser.close(); server.close(); }

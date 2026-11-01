@@ -3,10 +3,10 @@ import { showToast, formatarData } from './utils.js';
 import { sb, SUPABASE_URL } from './config.js';
 import { state } from './state.js';
 import { csvCell, downloadBlob, fetchAllRows } from './data.js';
-import { collectBackupTables, collectBackupPhotos, buildBackup } from './backup-core.js';
+import { createPortableBackup } from './backup-core.js';
 
 let backupRunning = false;
-function encodeBlob(blob) {
+export function encodeBlob(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result).split(',')[1]);
@@ -34,9 +34,9 @@ export async function backupData(format) {
         let total, partial = false;
         const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
         if (format === 'json') {
-            const tables = await collectBackupTables(sb, progress);
-            const photos = await collectBackupPhotos(sb, tables.cidadaos, SUPABASE_URL, encodeBlob, progress);
-            const payload = buildBackup(tables, photos, startedAt);
+            const payload = await createPortableBackup(sb, SUPABASE_URL, encodeBlob, progress);
+            const tables = payload;
+            const photos = { files: payload.files, external: payload.manifest.external_photo_urls };
             partial = photos.external.length > 0;
             downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `backup_aplicacao_${hoje}.json`);
             total = tables.cidadaos.length;

@@ -1,3 +1,4 @@
+import { setupRestoreUI, resetRestoreUI, refreshSafetyCopies } from './js/restore.js';
 import { applyFuelAccessUI, requireFuelAdmin } from './js/fuel-access.js';
 import { showToast, getInitials, getStatusInfo, formatarData, getFaixaEtaria } from './js/utils.js';
 import { SUPABASE_URL, SUPABASE_KEY, EDGE_FUNCTION_URL, sb } from './js/config.js';
@@ -135,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -355,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cota-history-download-btn')?.addEventListener('click', downloadCotaHistoryCSV);
         // Veículos
         setupVeiculosFiltro();
+        setupRestoreUI();
         // Toggle da seção Veículos no modal de cidadão (Sim/Não → lista dinâmica)
         setupVeiculoToggle();
         const addUserBtn = document.getElementById('add-user-btn');
@@ -591,7 +593,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ═══════════════════════════════════════════════════════════════
     function switchPage(pageId) {
         if (pageId === 'cotas-page' && !requireFuelAdmin()) return;
-        if (pageId === 'backup-page') setTimeout(renderBackupHistory, 50);
+        if (pageId === 'backup-page' && (!state.user || state.userRole !== 'admin')) return;
+        if (pageId === 'backup-page') {
+            setTimeout(renderBackupHistory, 50);
+            refreshSafetyCopies().catch(error => showToast(error.message, 'error'));
+        }
         document.querySelectorAll('.page').forEach(page => {
             page.classList.add('hidden');
             page.classList.remove('flex', 'flex-col');
