@@ -1,5 +1,6 @@
 import { showToast, getInitials, getStatusInfo, formatarData, getFaixaEtaria } from './js/utils.js';
 import { SUPABASE_URL, SUPABASE_KEY, EDGE_FUNCTION_URL, sb } from './js/config.js';
+import { applyCidadaoFilters, fetchAllRows } from './js/data.js';
 import { backupData, renderBackupHistory } from './js/backup.js';
 import { generateExcelReport, exportCoberturaExcel } from './js/reports.js';
 import {
@@ -547,22 +548,20 @@ document.addEventListener('DOMContentLoaded', () => {
         // Busca TODOS os cidadãos com os filtros ativos — não apenas a página atual
         showToast("A gerar relatório...", "info");
         const s = getCidadaosServerSearchState();
-        let query = sb.from('cidadaos').select('name, type, phone, whatsapp, email, logradouro, numero, complemento, bairro, cidade, estado, cep');
-        if (s.search)  query = query.or(`name.ilike.%${s.search}%,email.ilike.%${s.search}%,cpf.ilike.%${s.search}%,voterid.ilike.%${s.search}%`);
-        if (s.type)    query = query.eq('type', s.type);
-        if (s.bairro)  query = query.eq('bairro', s.bairro);
-        if (s.cidade)  query = query.eq('cidade', s.cidade);
-        if (s.leader)  query = query.eq('leader', s.leader);
-        if (s.sexo)    query = query.eq('sexo', s.sexo);
-        if (s.localTrabalho) query = query.ilike('localtrabalho', `%${s.localTrabalho}%`);
-        query = query.order('name', { ascending: true });
-
-        const { data, error } = await query;
-        if (error || !data || data.length === 0) {
-            showToast("Nenhum cidadão encontrado.", "warning");
-            return;
-        }
         const reportWindow = window.open('', '', 'width=800,height=600');
+        if (!reportWindow) { showToast('Permita a janela de impressão no navegador.', 'warning'); return; }
+        reportWindow.document.body.textContent = 'Carregando relatório...';
+        let data;
+        try {
+            data = await fetchAllRows(() => applyCidadaoFilters(
+                sb.from('cidadaos').select('name, type, phone, whatsapp, email, logradouro, numero, complemento, bairro, cidade, estado, cep', { count: 'exact' }), s
+            ).order('name').order('id'));
+        } catch (error) {
+            reportWindow.close(); showToast('Erro ao gerar relatório: ' + error.message, 'error'); return;
+        }
+        if (!data.length) { reportWindow.close(); showToast('Nenhum cidadão encontrado.', 'warning'); return; }
+        if (reportWindow.closed) return;
+        reportWindow.document.open();
         reportWindow.document.write('<html><head><title>Relatório</title>');
         reportWindow.document.write(`<style> body { font-family: Arial, sans-serif; margin: 20px; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; } h1 { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; } @media print { button { display: none; } } </style>`);
         reportWindow.document.write('</head><body>');

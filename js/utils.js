@@ -14,7 +14,10 @@ export function showToast(message, type = 'info') {
         default: bgColor = 'bg-blue-500'; textColor = 'text-white'; icon = 'ℹ'; break;
     }
     toast.className = `p-4 rounded-lg shadow-lg flex items-center gap-3 ${bgColor} ${textColor} transform translate-x-full opacity-0 transition-all duration-300 ease-out`;
-    toast.innerHTML = `<span class="font-bold text-lg">${icon}</span> <span>${message}</span>`;
+    const iconEl = document.createElement('span');
+    iconEl.className = 'font-bold text-lg'; iconEl.textContent = icon;
+    const textEl = document.createElement('span'); textEl.textContent = String(message ?? '');
+    toast.append(iconEl, textEl);
     container.appendChild(toast);
     setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
     setTimeout(() => {
@@ -53,8 +56,9 @@ export function formatarData(dateString) {
 export function getFaixaEtaria(dob) {
     if (!dob) return 'N/A';
     try {
-        const birthDate = new Date(dob);
-        if (isNaN(birthDate.getTime())) return 'N/A';
+        const parts = String(dob).split('-').map(Number);
+        const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (parts.length !== 3 || isNaN(birthDate.getTime()) || birthDate > new Date()) return 'N/A';
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
@@ -87,4 +91,8 @@ export function matchAmapaMunicipio(raw) {
     const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
     const alvo = norm(raw);
     return AMAPA_MUNICIPIOS.find(m => norm(m) === alvo) || '';
+}
+
+export function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }

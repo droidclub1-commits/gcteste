@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+import { fetchAllRows } from './data.js';
 // ═══════════════════════════════════════════════════════════════
 // COBERTURA — cobertura eleitoral por município/zona/seção/liderança
 // Extraído do app.js (Fase 10 da modularização)
@@ -99,6 +101,8 @@ export async function loadCoberturaEleitoral() {
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner mx-auto" style="display:inline-block"></div>';
 
+    coberturaData = [];
+    if (summary) summary.textContent = '';
     try {
         if (liderId) {
             // ── MODO LIDERANÇA: tabela individual com nome/título/zona/seção ──
@@ -112,33 +116,19 @@ export async function loadCoberturaEleitoral() {
             if (liderEmpty) liderEmpty.classList.add('hidden');
 
             let query = sb.from('cidadaos')
-                .select('name, voterid, zona, secao, cidade, type')
+                .select('name, voterid, zona, secao, cidade, type', { count: 'exact' })
                 .eq('leader', liderId)
                 .not('zona', 'is', null)
                 .not('zona', 'eq', '');
             if (cidade) query = query.eq('cidade', cidade);
             if (zona)   query = query.ilike('zona', `%${zona}%`);
             if (secao)  query = query.ilike('secao', `%${secao}%`);
-            query = query.order('zona', { ascending: true }).order('secao', { ascending: true }).order('name', { ascending: true });
+            query = query.order('zona', { ascending: true }).order('secao', { ascending: true }).order('name', { ascending: true }).order('id');
 
-            // ── Paginação server-side: chunks de 1000, limite de segurança 5000 ──
-            let data = [];
-            let _lOffset = 0;
-            const _LPAGE = 1000;
-            const _LMAX  = 5000;
-            let _lTruncated = false;
-            while (true) {
-                const { data: chunk, error } = await query.range(_lOffset, _lOffset + _LPAGE - 1);
-                if (error) throw error;
-                data = [...data, ...(chunk || [])];
-                if (!chunk || chunk.length < _LPAGE) break;
-                _lOffset += _LPAGE;
-                if (data.length >= _LMAX) { _lTruncated = true; break; }
-            }
-
+            const data = await fetchAllRows(() => query);
             const liderNome = state.allLeaders.find(l => l.id === liderId)?.name || 'Liderança';
             if (liderHeader) {
-                liderHeader.innerHTML = `<span class="font-semibold text-blue-800">Liderança: ${liderNome}</span> <span class="text-blue-600 ml-2">${(data||[]).length} cidadão(s) com zona/seção cadastrada</span>${_lTruncated ? ' <span class="text-orange-600 font-semibold ml-2">⚠️ Exibindo os primeiros 5.000 resultados — use filtros para refinar.</span>' : ''}`;
+                liderHeader.innerHTML = `<span class="font-semibold text-blue-800">Liderança: ${escapeHtml(liderNome)}</span> <span class="text-blue-600 ml-2">${(data||[]).length} cidadão(s) com zona/seção cadastrada</span>`;
             }
 
             liderTbody.innerHTML = '';
@@ -168,7 +158,7 @@ export async function loadCoberturaEleitoral() {
                             <p class="text-sm text-gray-500 mt-1">Seções</p>
                         </div>
                         <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
-                            <p class="text-xl font-bold text-orange-600 truncate">${liderNome.split(' ')[0]}</p>
+                            <p class="text-xl font-bold text-orange-600 truncate">${escapeHtml(liderNome.split(' ')[0])}</p>
                             <p class="text-sm text-gray-500 mt-1">Liderança Selecionada</p>
                         </div>`;
                 }
@@ -176,12 +166,12 @@ export async function loadCoberturaEleitoral() {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-gray-50';
                     tr.innerHTML = `
-                        <td class="px-4 py-3 font-medium text-gray-800">${c.name}</td>
-                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">${c.voterid || '—'}</td>
-                        <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold text-xs">${c.zona || '—'}</span></td>
-                        <td class="px-4 py-3"><span class="bg-purple-100 text-purple-800 px-2 py-1 rounded font-semibold text-xs">${c.secao || '—'}</span></td>
-                        <td class="px-4 py-3 text-gray-600 text-sm">${c.cidade || '—'}</td>
-                        <td class="px-4 py-3 text-gray-500 text-xs">${c.type || 'Outro'}</td>`;
+                        <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.name)}</td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">${escapeHtml(c.voterid || '—')}</td>
+                        <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold text-xs">${escapeHtml(c.zona || '—')}</span></td>
+                        <td class="px-4 py-3"><span class="bg-purple-100 text-purple-800 px-2 py-1 rounded font-semibold text-xs">${escapeHtml(c.secao || '—')}</span></td>
+                        <td class="px-4 py-3 text-gray-600 text-sm">${escapeHtml(c.cidade || '—')}</td>
+                        <td class="px-4 py-3 text-gray-500 text-xs">${escapeHtml(c.type || 'Outro')}</td>`;
                     liderTbody.appendChild(tr);
                 });
             }
@@ -195,25 +185,14 @@ export async function loadCoberturaEleitoral() {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">A carregar...</td></tr>';
             if (empty) empty.classList.add('hidden');
 
-            // ── Paginação server-side: chunks de 1000 para suportar 25k+ cadastros ──
-            let data = [];
-            let _offset = 0;
-            const _PAGE = 1000;
-            while (true) {
-                let q = sb.from('cidadaos')
-                    .select('cidade, zona, secao, type')
-                    .not('zona', 'is', null)
-                    .not('zona', 'eq', '');
+            const data = await fetchAllRows(() => {
+                let q = sb.from('cidadaos').select('cidade, zona, secao, type', { count: 'exact' })
+                    .not('zona', 'is', null).not('zona', 'eq', '');
                 if (cidade) q = q.eq('cidade', cidade);
-                if (zona)   q = q.ilike('zona', `%${zona}%`);
-                if (secao)  q = q.ilike('secao', `%${secao}%`);
-                q = q.range(_offset, _offset + _PAGE - 1);
-                const { data: chunk, error } = await q;
-                if (error) throw error;
-                data = [...data, ...(chunk || [])];
-                if (!chunk || chunk.length < _PAGE) break;
-                _offset += _PAGE;
-            }
+                if (zona) q = q.ilike('zona', `%${zona}%`);
+                if (secao) q = q.ilike('secao', `%${secao}%`);
+                return q.order('id');
+            });
 
             if (!data || data.length === 0) {
                 tbody.innerHTML = '';
@@ -241,7 +220,7 @@ export async function loadCoberturaEleitoral() {
 
             const totalCidadaos = coberturaData.reduce((s, g) => s + g.total, 0);
             const totalSecoes   = coberturaData.length;
-            const totalZonas    = new Set(coberturaData.map(g => `${g.cidade}||${g.zona}`)).size;
+            const totalZonas    = new Set(coberturaData.map(g => `${escapeHtml(g.cidade)}||${escapeHtml(g.zona)}`)).size;
             const topSecao      = coberturaData.reduce((a, b) => b.total > (a?.total||0) ? b : a, null);
 
             if (summary) {
@@ -260,7 +239,7 @@ export async function loadCoberturaEleitoral() {
                     </div>
                     <div class="bg-white rounded-lg shadow-sm p-4 text-center border">
                         <p class="text-3xl font-bold text-orange-600">${topSecao ? topSecao.total : 0}</p>
-                        <p class="text-sm text-gray-500 mt-1">Maior Seção${topSecao ? ` (Z${topSecao.zona}/S${topSecao.secao})` : ''}</p>
+                        <p class="text-sm text-gray-500 mt-1">Maior Seção${topSecao ? ` (Z${escapeHtml(topSecao.zona)}/S${escapeHtml(topSecao.secao)})` : ''}</p>
                     </div>`;
             }
 
@@ -270,16 +249,18 @@ export async function loadCoberturaEleitoral() {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-gray-50';
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-gray-800">${g.cidade}</td>
-                    <td class="px-4 py-3 font-semibold">${g.zona}</td>
-                    <td class="px-4 py-3 font-semibold">${g.secao}</td>
+                    <td class="px-4 py-3 text-gray-800">${escapeHtml(g.cidade)}</td>
+                    <td class="px-4 py-3 font-semibold">${escapeHtml(g.zona)}</td>
+                    <td class="px-4 py-3 font-semibold">${escapeHtml(g.secao)}</td>
                     <td class="px-4 py-3 text-center"><span class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm">${g.total}</span></td>
-                    <td class="px-4 py-3 text-gray-500 text-xs">${tiposStr}</td>`;
+                    <td class="px-4 py-3 text-gray-500 text-xs">${escapeHtml(tiposStr)}</td>`;
                 tbody.appendChild(tr);
             });
         }
     } catch(e) {
         console.error(e);
+        for (const id of ['cobertura-tbody', 'cobertura-lider-tbody']) { const node = el(id); if (node) node.textContent = ''; }
+        if (summary) summary.textContent = 'Não foi possível atualizar a cobertura.';
         showToast('Erro ao carregar cobertura: ' + e.message, 'error');
     } finally {
         btn.disabled = false;

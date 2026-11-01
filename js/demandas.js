@@ -1,3 +1,4 @@
+import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
 // DEMANDAS — listagem/paginação server-side, filtros, CRUD, modal
 // de cadastro, modal de detalhes/notas e cartão da demanda.
@@ -155,7 +156,7 @@ export async function loadDemandaNotes(demandaId) {
         notes.forEach(note => {
             const noteEl = document.createElement('div');
             noteEl.className = 'p-3 bg-gray-100 rounded-lg';
-            noteEl.innerHTML = `<p class="text-sm text-gray-800">${note.text}</p><p class="text-xs text-gray-500 text-right">${note.author || 'Utilizador'} - ${new Date(note.created_at).toLocaleString('pt-BR')}</p>`;
+            noteEl.innerHTML = `<p class="text-sm text-gray-800">${escapeHtml(note.text)}</p><p class="text-xs text-gray-500 text-right">${escapeHtml(note.author || 'Utilizador')} - ${new Date(note.created_at).toLocaleString('pt-BR')}</p>`;
             notesListEl.appendChild(noteEl);
         });
         notesListEl.scrollTop = notesListEl.scrollHeight;
