@@ -50,4 +50,4 @@ Testados validação de nomes, municípios, UF, ano, coordenadas, zoom e temas; 
 
 A interface passou em DOM simulado e Chromium, incluindo a página pública com configuração de outro estado e a consulta de CEP fora da lista. Passaram 31 testes unitários e todas as suítes SQL isoladas.
 
-Instalação e verificação transacional no ambiente conectado pendentes: duas tentativas de migração retornaram confirmação expirada. Não publicar a interface antes de aplicar e conferir o SQL 007.
+Instalação concluída. A verificação transacional de salvamento, revisão, auditoria, recusa de edição desatualizada, bloqueio de escrita sem permissão e leitura da configuração pública passou e foi revertida ao final. Nenhuma configuração de teste permaneceu. A conferência de restauração preservou a configuração vigente. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
