@@ -1,3 +1,4 @@
+import { setupEntryUI, resetEntryUI, applyEntryAccessUI } from './js/cadastro-entry.js';
 import { setupAuditUI, resetAudit, applyAuditAccessUI, loadAudit } from './js/audit.js';
 import { setupRestoreUI, resetRestoreUI, refreshSafetyCopies } from './js/restore.js';
 import { applyFuelAccessUI, requireFuelAdmin } from './js/fuel-access.js';
@@ -85,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeMainApp().finally(() => { _initLock = false; });
             }
         } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-            resetAudit();
+            resetAudit(); resetEntryUI();
             state.user = null;
             state.userRole = null;
             state.allCidadaos = []; state.allDemandas = []; state.allLeaders = [];
@@ -130,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finally { _initLock = false; }
             }
         } else {
-            resetAudit();
+            resetAudit(); resetEntryUI();
             state.user = null;
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
@@ -139,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI(); resetAudit();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI(); resetAudit(); resetEntryUI();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -369,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupVeiculosFiltro();
         setupRestoreUI();
         setupAuditUI();
+        setupEntryUI(async () => { await loadCidadaosPage(true); await loadBairrosDistintos(); await updateDashboard(); });
         // Toggle da seção Veículos no modal de cidadão (Sim/Não → lista dinâmica)
         setupVeiculoToggle();
         const addUserBtn = document.getElementById('add-user-btn');
@@ -455,6 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyRoleUI() {
         applyFuelAccessUI();
         applyAuditAccessUI();
+        applyEntryAccessUI();
         if (state.userRole === 'cadastrador') {
             // Esconde funcionalidades exclusivas do admin
             const els = [

@@ -1,0 +1,26 @@
+const {PGlite}=require('@electric-sql/pglite');const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const admin='11111111-1111-4111-8111-111111111111',user='22222222-2222-4222-8222-222222222222';
+(async()=>{const db=new PGlite();try{
+ await db.exec(require('./fixtures/application-schema.cjs')(admin,user));
+ await db.exec(`CREATE ROLE service_role; ALTER TABLE cidadaos ADD COLUMN phone text; ALTER TABLE cidadaos ADD COLUMN whatsapp boolean; ALTER TABLE cidadaos ADD COLUMN email text; ALTER TABLE cidadaos ADD COLUMN dob date; ALTER TABLE cidadaos ADD COLUMN bairro text; ALTER TABLE cidadaos ADD COLUMN cidade text; ALTER TABLE cidadaos ADD COLUMN estado text; ALTER TABLE cidadaos ADD COLUMN type text;`);
+ const sql=fs.readFileSync(path.join(__dirname,'../sql/006_cadastro_importacao.sql'),'utf8');await db.exec(sql);await db.exec(sql);
+ const q=async(s,a=[])=>(await db.query(s,a)).rows;const preview=async(rows,mode='import')=>(await q('SELECT conferir_cadastro_v1($1::jsonb,$2) AS d',[JSON.stringify(rows),mode]))[0].d;
+ const commit=async(rows,p,selected=[1],ack=[],op=crypto.randomUUID(),mode='import')=>(await q('SELECT confirmar_cadastro_v1($1::jsonb,$2::integer[],$3::integer[],$4,$5::uuid,$6) AS d',[JSON.stringify(rows),selected,ack,p.expected_state,op,mode]))[0].d;
+ await db.exec(`SET ROLE authenticated;SET request.jwt.claim.sub='${admin}';`);
+ const rows=[{name:'  Ana Silva ',cpf:'529.982.247-25',phone:'+55 (96) 99999-1111',whatsapp:'sim',email:'ANA@example.test',cidade:'Macapá',estado:'ap'}];
+ let p=await preview(rows);assert.equal(p.rows[0].status,'ready');assert.equal(p.rows[0].data.cpf,'52998224725');assert.equal(p.rows[0].data.phone,'96999991111');
+ const op=crypto.randomUUID(),done=await commit(rows,p,[1],[],op);assert.equal(done.inserted,1);assert.deepEqual(await commit(rows,p,[1],[],op),done);await assert.rejects(commit([{name:'Other'}],p,[1],[],op),/outros dados/);
+ p=await preview(rows);assert.equal(p.rows[0].status,'existing');await assert.rejects(commit(rows,p,[1],[1]),/bloqueada/);
+ const weak=[{name:'Outra pessoa',phone:'96999991111'}];p=await preview(weak);assert.equal(p.rows[0].status,'review');await assert.rejects(commit(weak,p),/duplicidade/);assert.equal((await commit(weak,p,[1],[1])).inserted,1);
+ const duplicates=[{name:'Bia',cpf:'111.444.777-35'},{name:'Bea',cpf:'11144477735'}];p=await preview(duplicates);assert(p.rows.every(r=>r.status==='duplicate_file'));
+ p=await preview([{name:'Jose',cidade:'Belém'},{name:'José',cidade:'Belem'}]);assert(p.rows.every(r=>r.status==='review'));
+ const bad=[{name:''},{name:'Invalid CPF',cpf:'11111111111'},{name:'Invalid date',dob:'2026-02-30'},{name:'Future',dob:'2999-01-01'},{name:'Unknown',user_id:user},{name:'Invalid phone',phone:'abc'},{name:'Invalid UF',estado:'XX'}];p=await preview(bad);assert(p.rows.every(r=>r.status==='invalid'));
+ const stale=[{name:'Concorrência',email:'new@example.test'}];p=await preview(stale);await q("INSERT INTO cidadaos(name,email,user_id) VALUES('Concorrência','new@example.test',$1)",[admin]);await assert.rejects(commit(stale,p),/mudaram/);
+ const partial=[{name:'Primeiro'},{name:'Falha',dob:'2001-02-31'}];p=await preview(partial);await assert.rejects(commit(partial,p,[1,2]),/bloqueada/);assert.equal((await q("SELECT count(*)::int n FROM cidadaos WHERE name='Primeiro'"))[0].n,0);
+ await db.exec(`RESET ROLE; CREATE POLICY own_read ON cidadaos FOR SELECT TO authenticated USING(user_id=auth.uid()); CREATE POLICY own_insert ON cidadaos FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid()); SET ROLE authenticated; SET request.jwt.claim.sub='${user}';`);
+ await assert.rejects(preview(rows),/administrador/);const own=[{name:'Cadastro rápido'}];p=await preview(own,'quick');assert.equal((await commit(own,p,[1],[],crypto.randomUUID(),'quick')).inserted,1);
+ assert.equal((await q("SELECT user_id FROM cidadaos WHERE name='Cadastro rápido'"))[0].user_id,user);assert.equal((await q('SELECT count(*)::int n FROM cadastro_private.receipts'))[0].n,1);
+ const hidden=await preview(rows,'quick');assert.equal(hidden.rows[0].matches.length,0);await assert.rejects(commit(rows,hidden,[1],[],crypto.randomUUID(),'quick'),/Documento/);
+ await db.exec('RESET ROLE; SET ROLE anon;');await assert.rejects(preview(own,'quick'),/permission denied/);
+ console.log('PASS: cadastro e importação validam, revisam duplicidades, revalidam prévia, gravam lote atômico, repetem com recibo e respeitam RLS.');
+ }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

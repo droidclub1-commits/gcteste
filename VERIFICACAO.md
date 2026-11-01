@@ -37,3 +37,9 @@ Passaram os testes isolados de criação, edição, alteração de status sem pe
 Passaram os testes isolados de instalação repetida, autoria, comparação de valores, atualização sem mudanças, rollback, criação e exclusão dos módulos, exclusão em cascata, acesso por perfil, bloqueio de alteração dos eventos, paginação e preservação do histórico na restauração. Interface testada em DOM simulado e Chromium: paginação, detalhes, conteúdo tratado como texto e bloqueio do cadastrador.
 
 Instalação concluída. A verificação transacional de criação, alteração, exclusão, autoria, comparação de valores, proteção dos eventos e conferência de restauração passou e foi revertida ao final, sem dados sintéticos restantes. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
+
+## Cadastro rápido e importação
+
+Passaram os testes de parser CSV (BOM, delimitadores, aspas, quebras internas, campos como texto, cabeçalhos e limites), validação no banco, normalização, duplicidades na base e no arquivo, revisão explícita, prévia desatualizada, lote atômico, recibo idempotente e permissões de administrador/cadastrador/anônimo. Interface verificada em DOM simulado e Chromium com backend simulado, incluindo tentativa após perda de resposta e conteúdo exibido como texto.
+
+Instalação concluída. A verificação transacional de prévia, gravação do lote, autoria, auditoria, repetição pelo recibo, prévia desatualizada e rollback de lote inválido passou e foi revertida ao final. Nenhum registro de teste permaneceu. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.

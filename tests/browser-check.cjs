@@ -300,6 +300,40 @@ const server = http.createServer((req, res) => {
         });
         assert.equal(audit.safe,true);assert(audit.detail.includes('<img'));assert.equal(audit.count,2);assert.equal(audit.blocked,true);
         console.log('PASS: histórico do administrador, paginação, comparação segura e bloqueio de cadastrador.');
+        const entry=await page.evaluate(async()=>{
+            const {setupEntryUI,applyEntryAccessUI,resetEntryUI}=await import('/js/cadastro-entry.js');let saved=0,calls=[];
+            setupEntryUI(async()=>{saved++;});applyEntryAccessUI();const original=window.__client.rpc;
+            window.__entryCalls=calls;
+            window.__client.rpc=async(name,args)=>{calls.push({name,args});if(name==='conferir_cadastro_v1')return{data:{expected_state:'snapshot',rows:args.p_rows.map((r,i)=>({line:i+1,data:r,status:r.name==='Bloqueado'?'existing':r.name==='Possível'?'review':'ready',matches:r.name==='Possível'?[{name:'<img src=x onerror=alert(1)>',id:'match'}]:[],match_count:r.name==='Possível'?1:0,peers:[]}))}};
+            if(!window.__entryLost){window.__entryLost=true;return{error:{message:'network'}};}return{data:{inserted:args.p_selected.length}};};
+            document.getElementById('quick-citizen-btn').click();document.getElementById('entry-name').value='Cadastro rápido';
+            document.getElementById('entry-quick').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();await Promise.resolve();
+            const noAutoSelection=document.querySelector('[data-entry-select]').checked!==true;
+            document.getElementById('entry-select-ready').click();document.getElementById('entry-confirm').click();await Promise.resolve();await Promise.resolve();
+            const retryLabel=document.getElementById('entry-confirm').textContent;
+            document.getElementById('entry-confirm').click();await Promise.resolve();await Promise.resolve();await Promise.resolve();
+            const commits=calls.filter(x=>x.name==='confirmar_cadastro_v1');const same=commits.length===2&&commits[0].args.p_operation===commits[1].args.p_operation;
+            window.__entrySaved=()=>saved;
+            return{noAutoSelection,retryLabel,same,saved,status:document.getElementById('entry-status').textContent};
+        });
+        assert(entry.noAutoSelection);assert(entry.retryLabel.includes('Tentar'));assert(entry.same);assert.equal(entry.saved,1);assert(entry.status.includes('Concluído'));
+        await page.evaluate(()=>document.getElementById('import-citizens-btn').click());
+        await page.locator('#entry-file').setInputFiles({name:'cidadaos.csv',mimeType:'text/csv',buffer:Buffer.from('nome;cpf\nBloqueado;52998224725\nPossível;\nNovo;')});
+        await page.evaluate(async()=>{for(let i=0;i<100;i++){if(document.querySelectorAll('[data-entry-select]').length===3)return;await new Promise(r=>setTimeout(r,10));}throw new Error('CSV preview did not load');});
+        const reviewed=await page.evaluate(async()=>{
+            const invalid=document.querySelector('[data-entry-select="1"]').disabled;
+            const safe=document.querySelectorAll('#entry-rows img').length===0;
+            document.querySelector('[data-entry-select="2"]').checked=true;document.getElementById('entry-confirm').click();await Promise.resolve();
+            const blocked=document.getElementById('entry-status').textContent.includes('Confirme a revisão');
+            document.querySelector('[data-entry-ack="2"]').checked=true;document.getElementById('entry-confirm').click();await Promise.resolve();await Promise.resolve();await Promise.resolve();
+            const last=window.__entryCalls.filter(c=>c.name==='confirmar_cadastro_v1').at(-1);
+            const mod=await import('/js/cadastro-entry.js');mod.resetEntryUI();window.__state.userRole='cadastrador';mod.applyEntryAccessUI();
+            document.getElementById('import-citizens-btn').click();const denied=document.getElementById('entry-modal').classList.contains('hidden');
+            window.__state.userRole='admin';mod.applyEntryAccessUI();
+            return{invalid,safe,blocked,ack:last.args.p_ack,selected:last.args.p_selected,denied};
+        });
+        assert(reviewed.invalid);assert(reviewed.safe);assert(reviewed.blocked);assert.deepEqual(reviewed.ack,[2]);assert.deepEqual(reviewed.selected,[2]);assert(reviewed.denied);
+        console.log('PASS: cadastro rápido, CSV revisado, bloqueios, confirmação explícita e repetição com mesmo identificador.');
         assert.deepEqual(errors, []);
         console.log('PASS: nenhum erro JavaScript não tratado no navegador.');
     } finally { await browser.close(); server.close(); }
