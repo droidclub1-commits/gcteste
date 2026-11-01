@@ -128,7 +128,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="text-lg font-semibold text-gray-500">Total de Cidadãos</h3><p id="dashboard-total-cidadaos" class="text-4xl font-bold text-blue-600 animate-pulse">…</p></div>
-                            <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="text-lg font-semibold text-gray-500">Total de Demandas</h3><p id="dashboard-total-demandas" class="text-4xl font-bold text-purple-600 animate-pulse">…</p></div>
+                            <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="text-lg font-semibold text-gray-500">Total de Demandas</h3><p id="dashboard-total-demandas" class="text-4xl font-bold text-purple-600 animate-pulse">…</p><p id="dashboard-demandas-prazos" class="mt-2 text-sm text-gray-600"></p></div>
                             <div class="bg-white p-6 rounded-lg shadow-sm md:col-span-2">
                                 <h3 class="text-lg font-semibold text-gray-500 mb-4">Cidadãos por Tipo</h3>
                                 <div class="relative h-80"><canvas id="cidadaos-por-tipo-chart"></canvas></div>
@@ -238,10 +238,14 @@
                          <span>Filtros e busca</span>
                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="filters-toggle-icon transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
                      </button>
-                     <div id="demandas-filters-wrap" class="filters-collapsed grid grid-cols-1 md:grid-cols-5 gap-3">
+                     <div id="demandas-filters-wrap" class="filters-collapsed grid grid-cols-1 md:grid-cols-4 gap-3">
                           <input type="text" id="demanda-search-nome" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="&#x1F50D; Buscar por solicitante..." autocomplete="off">
                           <select id="demanda-filter-status" class="w-full border-gray-300 rounded-lg bg-white text-sm px-2 py-2"><option value="">Todos os Status</option><option value="pending">Pendente</option><option value="inprogress">Em Andamento</option><option value="completed">Concluída</option></select>
                           <select id="demanda-filter-leader" class="w-full border-gray-300 rounded-lg bg-white text-sm px-2 py-2"><option value="">Todas as Lideranças</option></select>
+                          <input id="demanda-filter-responsavel" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Buscar responsável" aria-label="Filtrar por responsável" autocomplete="off">
+                          <select id="demanda-filter-prioridade" class="w-full border rounded-lg px-2 py-2 text-sm" aria-label="Filtrar por prioridade"><option value="">Todas as prioridades</option><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select>
+                          <select id="demanda-filter-prazo" class="w-full border rounded-lg px-2 py-2 text-sm" aria-label="Filtrar por prazo"><option value="">Todos os prazos</option><option value="atrasadas">Em atraso</option><option value="hoje">Vencem hoje</option><option value="sete-dias">Próximos 7 dias</option><option value="sem-prazo">Sem prazo</option></select>
+                          <select id="demanda-order" class="w-full border rounded-lg px-2 py-2 text-sm" aria-label="Ordenar demandas"><option value="">Mais recentes</option><option value="prazo">Prazo mais próximo</option></select>
                           <button id="demanda-clear-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg text-sm">Limpar Filtros</button>
                      </div>
                 </header>
@@ -750,11 +754,17 @@
                         </div>
                     <div class="mb-4">
                         <label for="demanda-title" class="block text-sm font-medium text-gray-700 mb-1">Título</label>
-                        <input type="text" id="demanda-title" class="w-full border border-gray-300 p-3 rounded-lg" required>
+                        <input type="text" id="demanda-title" maxlength="200" class="w-full border border-gray-300 p-3 rounded-lg" required>
                     </div>
                     <div class="mb-6">
                         <label for="demanda-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                         <textarea id="demanda-description" rows="3" class="w-full border border-gray-300 p-3 rounded-lg"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div class="sm:col-span-2"><label for="demanda-responsavel" class="block text-sm font-medium mb-1">Responsável pelo acompanhamento</label><input id="demanda-responsavel" type="text" maxlength="120" class="w-full border p-3 rounded-lg" placeholder="Nome de quem vai acompanhar" autocomplete="off"></div>
+                        <div><label for="demanda-prazo" class="block text-sm font-medium mb-1">Prazo</label><input id="demanda-prazo" type="date" class="w-full border p-3 rounded-lg"></div>
+                        <div><label for="demanda-prioridade" class="block text-sm font-medium mb-1">Prioridade</label><select id="demanda-prioridade" class="w-full border p-3 rounded-lg"><option value="normal">Normal</option><option value="baixa">Baixa</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+                        <div id="demanda-edit-status-group" class="hidden sm:col-span-2"><label for="demanda-edit-status" class="block text-sm font-medium mb-1">Status</label><select id="demanda-edit-status" class="w-full border p-3 rounded-lg"><option value="pending">Pendente</option><option value="inprogress">Em andamento</option><option value="completed">Concluída</option></select></div>
                     </div>
                     <div class="flex justify-end gap-4">
                         <button type="button" id="cancel-demanda-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
@@ -780,6 +790,8 @@
                 </div>
                 <div class="flex-1 overflow-y-auto pr-4 -mr-4">
                     <p class="text-gray-700 mb-4" id="details-demanda-description"></p>
+                    <div id="details-demanda-tracking" class="mb-4 p-3 bg-gray-50 rounded-lg"></div>
+                    <button id="edit-demanda-btn" type="button" class="mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Editar acompanhamento</button>
                     <div class="mb-4">
                         <label for="details-demanda-status" class="block text-sm font-medium text-gray-700">Status</label>
                         <select id="details-demanda-status" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">

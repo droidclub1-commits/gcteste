@@ -1,3 +1,4 @@
+import { deadlineState } from './demanda-fields.js';
 // ═══════════════════════════════════════════════════════════════
 // DASHBOARD — gráficos, widget de aniversariantes e demandas recentes
 // Extraído do app.js (Fase 12 da modularização — último bloco grande)
@@ -33,11 +34,18 @@ export async function updateDashboard() {
         // Independente dos filtros e caches das telas de cidadãos/demandas.
         const [cidadaos, demandas] = await Promise.all([
             fetchAllRows(() => sb.from('cidadaos').select('id, name, dob, type, cidade, bairro, sexo', { count: 'exact' }).order('id')),
-            fetchAllRows(() => sb.from('demandas').select('id, title, status, created_at, cidadao:cidadaos(name)', { count: 'exact' }).order('created_at', { ascending: false }).order('id'))
+            fetchAllRows(() => sb.from('demandas').select('id, title, status, created_at, responsavel, prazo, prioridade, cidadao:cidadaos(name)', { count: 'exact' }).order('created_at', { ascending: false }).order('id'))
         ]);
         if (generation !== dashboardGeneration) return;
         if (totalEl) { totalEl.textContent = cidadaos.length; totalEl.classList.remove('animate-pulse'); }
         if (demandasEl) { demandasEl.textContent = demandas.length; demandasEl.classList.remove('animate-pulse'); }
+        const tracking=document.getElementById('dashboard-demandas-prazos');
+        if (tracking) {
+            const overdue=demandas.filter(d=>deadlineState(d)==='atrasada').length;
+            const today=demandas.filter(d=>deadlineState(d)==='hoje').length;
+            const urgent=demandas.filter(d=>d.prioridade==='urgente' && d.status!=='completed').length;
+            tracking.textContent=`${overdue} em atraso · ${today} vencem hoje · ${urgent} urgentes abertas`;
+        }
         updateDemandasRecentes(demandas);
         await Promise.all([
             updateAniversariantes(cidadaos), updateCidadaosPorTipoChart(cidadaos),
@@ -51,6 +59,7 @@ export async function updateDashboard() {
         for (const el of [totalEl, demandasEl]) {
             if (el) { el.textContent = 'Indisponível'; el.classList.remove('animate-pulse'); }
         }
+        if (document.getElementById('dashboard-demandas-prazos')) document.getElementById('dashboard-demandas-prazos').textContent='';
         _aniversariantesTodos = [];
         const anivTotal = document.getElementById('aniversariantes-total');
         if (anivTotal) anivTotal.textContent = '';

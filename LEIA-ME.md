@@ -77,3 +77,17 @@ Instale as dependências de desenvolvimento com `npm ci`. Execute `npm test`, `n
 ## Combustível: acesso exclusivo do administrador
 
 Aplique também `sql/002_combustivel_somente_admin.sql` antes de publicar esta atualização. Menu, histórico, lançamentos e relatórios de combustível são exclusivos do administrador. A regra também é aplicada no banco, inclusive contra acesso direto à API. Os acessos dos demais módulos não são alterados.
+
+## Acompanhamento das demandas
+
+Antes de publicar esta etapa, aplique `sql/004_demandas_acompanhamento.sql` após as instalações anteriores.
+
+- Responsável é um nome livre de até 120 caracteres e pode identificar uma pessoa sem login. Esse campo não concede acesso a registros.
+- Prazo é opcional. Demandas concluídas não são destacadas como atrasadas.
+- Prioridade aceita Baixa, Normal, Alta e Urgente. Registros anteriores recebem Normal; responsável e prazo começam vazios.
+- Nos detalhes, Editar acompanhamento permite alterar os campos e o status. Há filtros por responsável, prioridade e prazo e ordenação pelo prazo mais próximo. O painel resume atrasos, vencimentos do dia e urgências abertas.
+- As gravações preservam a autoria original. Alterações e sua nota de acompanhamento ocorrem na mesma transação. Uma versão desatualizada é recusada para impedir que uma edição sobrescreva outra.
+- As permissões de leitura e edição dos perfis permanecem as mesmas. Combustível continua exclusivo do administrador.
+- Backups novos incluem os campos. Na restauração de arquivos anteriores, as demandas recuperadas recebem os valores padrão dos campos que ainda não existiam.
+
+O histórico completo de alterações e exclusões do sistema continua como um item separado do checklist.

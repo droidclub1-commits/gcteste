@@ -324,6 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(demandaSearchNome._t);
             demandaSearchNome._t = setTimeout(() => loadDemandasPage(true), 400);
         });
+        for (const id of ['demanda-filter-prioridade','demanda-filter-prazo','demanda-order']) {
+            document.getElementById(id)?.addEventListener('change',()=>loadDemandasPage(true));
+        }
+        const responsibleSearch=document.getElementById('demanda-filter-responsavel');
+        responsibleSearch?.addEventListener('input',()=>{
+            clearTimeout(responsibleSearch._t);
+            responsibleSearch._t=setTimeout(()=>loadDemandasPage(true),350);
+        });
         demandaClearFiltersBtn.addEventListener('click', clearDemandaFilters);
         document.getElementById('demandas-load-more-btn')?.addEventListener('click', () => loadDemandasPage(false));
         generateReportBtn.addEventListener('click', generatePrintReport);
