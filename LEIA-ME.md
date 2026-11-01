@@ -103,3 +103,21 @@ A captura ocorre no banco, na mesma transação da operação, para cidadãos, d
 A autoria vem da sessão autenticada, e não do proprietário do registro. Serviços sem usuário identificado aparecem como Sistema/integração; operações diretas no banco, como Manutenção no banco. O histórico só permite leitura para administradores da aplicação; não há API de edição ou exclusão dos eventos. O proprietário do banco mantém seus privilégios de manutenção.
 
 A restauração identifica os eventos com o ID da operação e preserva todo o histórico existente. A conferência do backup reverte seus eventos de teste. O JSON portátil e as cópias de recuperação da aplicação não incluem nem substituem a trilha de auditoria; para recuperá-la após perda do banco, mantenha também backup do banco completo, incluindo o esquema audit_private. Os valores anteriores continuam armazenados mesmo após a exclusão do registro original.
+
+## Cadastro rápido e importação com revisão
+
+Aplique `sql/006_cadastro_importacao.sql` antes de publicar a interface. A mesma instalação está em `supabase/migrations/20261101044754_cadastro_importacao.sql`, gerada pelo CLI. Use apenas um dos caminhos; não execute um fluxo de migrações sem antes estabelecer o histórico das instalações anteriores.
+
+Em Cidadãos, Cadastro rápido permite cadastrar nome, CPF, telefone, WhatsApp, e-mail, nascimento, bairro, município e UF. Apenas nome é obrigatório. O tipo inicial é Outro; os demais detalhes e veículos podem ser preenchidos depois no formulário completo. Disponível para administrador e cadastrador, com as permissões atuais.
+
+Importar CSV é exclusivo do administrador. Baixe o modelo no próprio diálogo. O arquivo deve ser UTF-8, separado por ponto e vírgula ou vírgula, com até 500 registros e 1 MB. Cabeçalho: `nome;cpf;telefone;whatsapp;email;nascimento;bairro;municipio;uf`. Colunas opcionais podem ser omitidas. Nascimento usa AAAA-MM-DD; WhatsApp aceita sim/não, true/false ou 1/0. Não envie veículos, perfis, autoria ou IDs de registros neste arquivo. Preserve documentos como texto na planilha.
+
+A conferência valida campos no servidor e mostra os valores normalizados antes da gravação. CPF recebe validação dos dígitos verificadores; telefone aceita DDD brasileiro com prefixo +55 opcional. E-mail, data e UF também são validados.
+
+A revisão considera CPF sem pontuação, telefone sem formatação/prefixo brasileiro, e-mail sem diferença de maiúsculas, e nome sem acentos combinado com nascimento ou município. CPF já cadastrado ou repetido dentro do arquivo bloqueia a linha: corrija o arquivo ou mantenha o registro existente. Outras coincidências geram alerta; só podem ser inseridas com seleção e confirmação explícita de que é outra pessoa. A prévia mostra até cinco coincidências por linha e informa o total. Não há comparação aproximada de grafias nem garantia de detectar todas as duplicidades.
+
+A importação confere toda a base acessível ao administrador; o cadastro rápido do cadastrador confere somente os registros permitidos pelas políticas atuais. Restrições únicas do banco continuam valendo e erros de documento não revelam dados de registros fora desse acesso. O formulário completo existente mantém suas regras.
+
+Selecione as linhas que deseja criar; nenhuma vem selecionada. Os registros existentes não são mesclados nem atualizados. O lote selecionado é gravado em uma única transação, com autoria da sessão e histórico de auditoria. A confirmação revalida a prévia sob bloqueio de gravação; mudanças nas coincidências exigem nova conferência. Se uma linha selecionada falhar, todo o lote é revertido.
+
+Se a resposta de rede não for confirmada, mantenha o diálogo aberto e use Tentar novamente / conferir resultado: o mesmo identificador recupera o recibo sem repetir o lote. Não recarregue a página durante essa conferência; o pedido pendente fica apenas na memória da sessão. Recibos ficam no esquema cadastro_private, separados dos dados restauráveis. O backup completo do banco deve incluí-los.

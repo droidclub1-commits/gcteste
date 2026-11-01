@@ -8,7 +8,7 @@
 | Alta | Combustível por veículo e por período | Adiado pelo usuário |
 | Alta | Responsável, prazo e prioridade nas demandas | Concluído |
 | Alta | Histórico de alterações e exclusões | Concluído |
-| Média | Cadastro rápido e importação com revisão de duplicidades | Pendente |
+| Média | Cadastro rápido e importação com revisão de duplicidades | Concluído |
 | Média | Configuração por campanha e município | Pendente |
 
 Combustível permanece exclusivo do administrador, inclusive na API.
