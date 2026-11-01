@@ -1,3 +1,4 @@
+import { getCampaign } from './campaign-model.js';
 // ═══════════════════════════════════════════════════════════════
 // MAP — mapa de cidadãos (Leaflet + MarkerCluster)
 // Extraído do app.js (Fase 11 da modularização)
@@ -19,7 +20,7 @@ let lastCidadaosPlotted = []; // cache do último lote plotado, pra montar o cal
 
 function initializeMap() {
     if (map) { map.remove(); }
-    map = L.map('map').setView([-0.03964, -51.18182], 13);
+    map = L.map('map').setView([getCampaign().map_lat, getCampaign().map_lng], getCampaign().map_zoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
@@ -127,7 +128,7 @@ export async function openMapModal(cidadaosToPlot = null) {
     if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [50, 50] });
     } else {
-        map.setView([-0.03964, -51.18182], 13);
+        map.setView([getCampaign().map_lat, getCampaign().map_lng], getCampaign().map_zoom);
     }
     setupHeatmapToggle();
 }

@@ -47,7 +47,7 @@
                         <path d="M26.7 30.2l2.2 2.2 4.1-4.5" stroke="#0C3E85" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                  </div>
-                <h2 class="mt-6 text-3xl font-bold text-gray-900">GESTOR CIDADÃO</h2>
+                <h2 class="mt-6 text-3xl font-bold text-gray-900" data-campaign-app>GESTOR CIDADÃO</h2><p data-campaign-label class="hidden mt-2 text-sm text-gray-600"></p>
                 <p class="mt-2 text-sm text-gray-600">Por favor, inicie a sessão para continuar</p>
             </div>
             <form id="login-form" class="mt-8 space-y-6">
@@ -68,7 +68,7 @@
                 </div>
             </form>
         </div>
-        <p class="mt-8 text-xs text-gray-500 font-medium">2025 GESTOR CIDADÃO© - todos os direitos reservados.</p>
+        <p class="mt-8 text-xs text-gray-500 font-medium"><span data-campaign-app>GESTOR CIDADÃO</span>© - todos os direitos reservados.</p>
     </div>
 
     <div id="app-container" class="hidden h-screen">
@@ -95,7 +95,7 @@
                         <path d="M26.7 30.2l2.2 2.2 4.1-4.5" stroke="#0C3E85" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-                <span class="text-xl font-bold">GESTOR CIDADÃO</span>
+                <span><span class="text-xl font-bold" data-campaign-app>GESTOR CIDADÃO</span><span data-campaign-label class="hidden block text-xs mt-1"></span><span data-campaign-scope class="block text-xs mt-1">Macapá/AP</span></span>
             </a>
             <nav id="sidebar-nav" class="flex-1 p-4">
                 <ul>
@@ -107,6 +107,7 @@
                     <li data-fuel-admin class="hidden"><a href="#cotas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>Cotas de Combustível</a></li>
                     <li><a href="#cobertura" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Cobertura Eleitoral</a></li>
                     <li><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
+                    <li data-campaign-admin class="hidden"><a href="#campaign" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700">Configuração da campanha</a></li>
                     <li data-audit-admin class="hidden"><a href="#historico" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700">Histórico do sistema</a></li>
                     <li><a href="#backup" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a></li>
                 </ul>
@@ -117,7 +118,7 @@
                     Sair
                 </button>
                 <div class="text-center mt-2">
-                    <p class="text-[9px] text-slate-600 font-normal tracking-wide hover:text-slate-500 transition-colors cursor-default">© 2025 GESTOR CIDADÃO</p>
+                    <p class="text-[9px] text-slate-600 font-normal tracking-wide hover:text-slate-500 transition-colors cursor-default">© <span data-campaign-app>GESTOR CIDADÃO</span></p>
                 </div>
             </div>
         </aside>
@@ -441,11 +442,15 @@
             </main>
 
             <!-- PÁGINA BACKUP -->
+<main id="campaign-page" class="page hidden flex-col flex-1 overflow-y-auto p-6"><h1 class="text-2xl font-bold">Configuração da campanha</h1>
+<p class="my-3 text-gray-600">Uma campanha por instalação. Alterar a configuração não move nem separa os dados existentes. Para outro cliente, use uma instalação e banco próprios.</p><p class="my-3 text-sm text-gray-600">A identificação, os municípios e o tema são públicos e aparecem também no cadastro público. Não informe senhas nem dados privados nestes campos.</p>
+<div class="flex flex-wrap gap-3 my-3"><button id="campaign-reload" type="button" class="border rounded p-2">Recarregar configuração</button><button id="campaign-export" type="button" class="border rounded p-2">Baixar configuração salva</button><label class="border rounded p-2">Carregar configuração JSON<input id="campaign-import" type="file" accept=".json,application/json" class="block mt-1"></label></div>
+<form id="campaign-form" class="max-w-4xl"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><label>Nome de exibição do sistema<input id="campaign-app_name" type="text" maxlength="80" required class="block w-full border rounded p-2"></label><label>Nome da campanha<input id="campaign-campaign_name" type="text" maxlength="160" class="block w-full border rounded p-2"></label><label>Nome público do candidato (opcional)<input id="campaign-candidate_name" type="text" maxlength="120" class="block w-full border rounded p-2"></label><label>Ano da campanha (opcional)<input id="campaign-election_year" type="number" min="2000" max="2100" step="1" class="block w-full border rounded p-2"></label><label>Município principal<input id="campaign-city" type="text" maxlength="100" required class="block w-full border rounded p-2"></label><label>UF<input id="campaign-uf" type="text" maxlength="2" required class="block w-full border rounded p-2"></label><label>Latitude inicial do mapa<input id="campaign-map_lat" type="number" required step="any" min="-90" max="90" class="block w-full border rounded p-2"></label><label>Longitude inicial do mapa<input id="campaign-map_lng" type="number" required step="any" min="-180" max="180" class="block w-full border rounded p-2"></label><label>Zoom inicial (1 a 18)<input id="campaign-map_zoom" type="number" required min="1" max="18" step="1" class="block w-full border rounded p-2"></label><label>Tema<select id="campaign-theme" class="block w-full border rounded p-2"><option value="blue">Azul</option><option value="green">Verde</option><option value="purple">Roxo</option><option value="burgundy">Vinho</option></select></label><label class="md:col-span-2">Municípios atendidos (um por linha, até 200)<textarea id="campaign-municipalities" rows="8" required class="block w-full border rounded p-2"></textarea></label></div><p class="my-3 text-sm text-gray-600">A lista sugere municípios nos formulários e filtros. Localidades de cadastros anteriores continuam disponíveis; alterar o município principal não altera endereços já cadastrados. O mapa usa estas coordenadas quando não há pontos para exibir.</p><button type="submit" class="bg-blue-600 text-white rounded px-4 py-3">Salvar configuração</button></form><p id="campaign-status" role="status" aria-live="polite" class="my-3"></p></main>
 <main id="historico-page" class="page hidden flex-col flex-1 overflow-y-auto p-6">
 <h1 class="text-2xl font-bold mb-2">Histórico do sistema</h1>
 <p class="text-sm text-gray-600 mb-4">Registros a partir da ativação deste recurso. Consulta exclusiva do administrador. Restaurar um backup não apaga este histórico.</p>
 <form id="audit-filters" class="flex flex-wrap gap-3 mb-4">
-<label>Módulo<select id="audit-table" class="block border rounded p-2"><option value="">Todos</option><option value="cidadaos">Cidadãos</option><option value="demandas">Demandas</option><option value="notes">Anotações</option><option value="veiculos">Veículos</option><option value="cotas_combustivel">Combustível</option><option value="profiles">Perfis</option></select></label>
+<label>Módulo<select id="audit-table" class="block border rounded p-2"><option value="">Todos</option><option value="cidadaos">Cidadãos</option><option value="demandas">Demandas</option><option value="notes">Anotações</option><option value="veiculos">Veículos</option><option value="cotas_combustivel">Combustível</option><option value="profiles">Perfis</option><option value="campanha_config">Configuração da campanha</option></select></label>
 <label>Operação<select id="audit-action" class="block border rounded p-2"><option value="">Todas</option><option value="INSERT">Criação</option><option value="UPDATE">Alteração</option><option value="DELETE">Exclusão</option></select></label>
 <label>De<input id="audit-from" type="date" class="block border rounded p-2"></label><label>Até<input id="audit-to" type="date" class="block border rounded p-2"></label>
 <label>Pessoa, registro ou usuário<input id="audit-search" maxlength="160" class="block border rounded p-2"></label>
@@ -589,7 +594,7 @@
                                 <div class="col-span-2"><label for="cidadao-complemento" class="block text-sm font-medium text-gray-700 mb-1">Complemento</label><input type="text" id="cidadao-complemento" class="w-full border border-gray-300 p-2 rounded-lg"></div>
                                 <div class="col-span-3"><label for="cidadao-bairro" class="block text-sm font-medium text-gray-700 mb-1">Bairro</label><input type="text" id="cidadao-bairro" class="w-full border border-gray-300 p-2 rounded-lg"></div>
                                 <div class="col-span-2"><label for="cidadao-cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label><select id="cidadao-cidade" class="w-full border border-gray-300 p-2 rounded-lg bg-white"><option value="">Selecione o município...</option><option value="Amapá">Amapá</option><option value="Calçoene">Calçoene</option><option value="Cutias">Cutias</option><option value="Ferreira Gomes">Ferreira Gomes</option><option value="Itaubal">Itaubal</option><option value="Laranjal do Jari">Laranjal do Jari</option><option value="Macapá">Macapá</option><option value="Mazagão">Mazagão</option><option value="Oiapoque">Oiapoque</option><option value="Pedra Branca do Amapari">Pedra Branca do Amapari</option><option value="Porto Grande">Porto Grande</option><option value="Pracuúba">Pracuúba</option><option value="Santana">Santana</option><option value="Serra do Navio">Serra do Navio</option><option value="Tartarugalzinho">Tartarugalzinho</option><option value="Vitória do Jari">Vitória do Jari</option></select></div>
-                                <div><label for="cidadao-estado" class="block text-sm font-medium text-gray-700 mb-1">UF</label><input type="text" id="cidadao-estado" value="AP" readonly class="w-full border border-gray-300 p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"></div>
+                                <div><label for="cidadao-estado" class="block text-sm font-medium text-gray-700 mb-1">UF</label><input type="text" id="cidadao-estado" value="AP" maxlength="2" class="w-full border border-gray-300 p-2 rounded-lg"></div>
                             </div>
                             <div class="flex gap-4 pt-2">
                                 <div><label for="cidadao-sons" class="block text-sm font-medium text-gray-700 mb-1">Filhos</label><input type="number" id="cidadao-sons" class="w-full border border-gray-300 p-2 rounded-lg" min="0" value="0"></div>

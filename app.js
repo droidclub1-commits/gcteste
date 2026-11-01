@@ -1,3 +1,5 @@
+import { setupCampaignUI, resetCampaignUI, applyCampaignAccessUI, loadCampaign, openCampaignSettings } from './js/campaign-settings.js';
+import { campaignReportLabel } from './js/campaign-model.js';
 import { setupEntryUI, resetEntryUI, applyEntryAccessUI } from './js/cadastro-entry.js';
 import { setupAuditUI, resetAudit, applyAuditAccessUI, loadAudit } from './js/audit.js';
 import { setupRestoreUI, resetRestoreUI, refreshSafetyCopies } from './js/restore.js';
@@ -70,6 +72,7 @@ let logoBtn, logoutBtn, sidebarNav, addCidadaoBtn, addDemandaGeralBtn,
     loadMoreBtn, cidadaoLat, cidadaoLong,
     itemToDelete = { id: null, type: null };
 document.addEventListener('DOMContentLoaded', () => {
+    loadCampaign().catch(error => console.warn(error.message));
     const loginPage = document.getElementById('login-page');
     const appContainer = document.getElementById('app-container');
     const loginForm = document.getElementById('login-form');
@@ -86,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeMainApp().finally(() => { _initLock = false; });
             }
         } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-            resetAudit(); resetEntryUI();
+            resetAudit(); resetEntryUI(); resetCampaignUI();
             state.user = null;
             state.userRole = null;
             state.allCidadaos = []; state.allDemandas = []; state.allLeaders = [];
@@ -131,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finally { _initLock = false; }
             }
         } else {
-            resetAudit(); resetEntryUI();
+            resetAudit(); resetEntryUI(); resetCampaignUI();
             state.user = null;
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
@@ -140,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI(); resetAudit(); resetEntryUI();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI(); resetAudit(); resetEntryUI(); resetCampaignUI();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -370,6 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupVeiculosFiltro();
         setupRestoreUI();
         setupAuditUI();
+        setupCampaignUI();
         setupEntryUI(async () => { await loadCidadaosPage(true); await loadBairrosDistintos(); await updateDashboard(); });
         // Toggle da seção Veículos no modal de cidadão (Sim/Não → lista dinâmica)
         setupVeiculoToggle();
@@ -422,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Perfil não encontrado.');
             }
             state.userRole = profileData.role;
+            await loadCampaign().catch(error => showToast(error.message, 'warning'));
             applyRoleUI();
 
             // ── 2. Líderes + demandas + bairros em paralelo ──────────────
@@ -458,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFuelAccessUI();
         applyAuditAccessUI();
         applyEntryAccessUI();
+        applyCampaignAccessUI();
         if (state.userRole === 'cadastrador') {
             // Esconde funcionalidades exclusivas do admin
             const els = [
@@ -586,6 +592,9 @@ document.addEventListener('DOMContentLoaded', () => {
         reportWindow.document.write(`<style> body { font-family: Arial, sans-serif; margin: 20px; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; } h1 { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; } @media print { button { display: none; } } </style>`);
         reportWindow.document.write('</head><body>');
         reportWindow.document.write('<h1>Relatório de Cidadãos</h1>');
+        const identity = reportWindow.document.createElement('p');
+        identity.textContent = campaignReportLabel();
+        reportWindow.document.body.appendChild(identity);
         reportWindow.document.write(`<p>Total: ${data.length}</p>`);
         reportWindow.document.write('<button onclick="window.print()">Imprimir</button>');
         reportWindow.document.write('<table>');
@@ -608,6 +617,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // BACKUP DE DADOS
     // ═══════════════════════════════════════════════════════════════
     function switchPage(pageId) {
+        if (pageId === 'campaign-page') {
+            if (!state.user || state.userRole !== 'admin') return;
+            openCampaignSettings();
+        }
         if (pageId === 'historico-page') {
             if (!state.user || state.userRole !== 'admin') return;
             loadAudit();
@@ -625,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            const flexPages = ['historico-page','dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
+            const flexPages = ['campaign-page','historico-page','dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
             if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {

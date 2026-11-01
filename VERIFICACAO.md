@@ -43,3 +43,11 @@ Instalação concluída. A verificação transacional de criação, alteração,
 Passaram os testes de parser CSV (BOM, delimitadores, aspas, quebras internas, campos como texto, cabeçalhos e limites), validação no banco, normalização, duplicidades na base e no arquivo, revisão explícita, prévia desatualizada, lote atômico, recibo idempotente e permissões de administrador/cadastrador/anônimo. Interface verificada em DOM simulado e Chromium com backend simulado, incluindo tentativa após perda de resposta e conteúdo exibido como texto.
 
 Instalação concluída. A verificação transacional de prévia, gravação do lote, autoria, auditoria, repetição pelo recibo, prévia desatualizada e rollback de lote inválido passou e foi revertida ao final. Nenhum registro de teste permaneceu. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
+
+## Configuração por campanha e município
+
+Testados validação de nomes, municípios, UF, ano, coordenadas, zoom e temas; edição exclusiva do administrador; leitura pública limitada à tabela de configuração; concorrência por revisão; captura no histórico e preservação da configuração na conferência da restauração. Testados identificação tratada como texto, opções dinâmicas e preservação de localidades anteriores na interface.
+
+A interface passou em DOM simulado e Chromium, incluindo a página pública com configuração de outro estado e a consulta de CEP fora da lista. Passaram 31 testes unitários e todas as suítes SQL isoladas.
+
+Instalação e verificação transacional no ambiente conectado pendentes: duas tentativas de migração retornaram confirmação expirada. Não publicar a interface antes de aplicar e conferir o SQL 007.

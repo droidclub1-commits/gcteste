@@ -1,7 +1,7 @@
 import { sb } from './config.js';
 import { state } from './state.js';
 const $ = id => document.getElementById(id);
-const modules = {cidadaos:'Cidadãos',demandas:'Demandas',notes:'Anotações',veiculos:'Veículos',cotas_combustivel:'Combustível',profiles:'Perfis'};
+const modules = {cidadaos:'Cidadãos',demandas:'Demandas',notes:'Anotações',veiculos:'Veículos',cotas_combustivel:'Combustível',profiles:'Perfis',campanha_config:'Configuração da campanha'};
 const actions = {INSERT:'Criação',UPDATE:'Alteração',DELETE:'Exclusão'};
 let generation=0, cursor=null, busy=false, filters=null;
 const allowed=()=>Boolean(state.user && state.userRole==='admin');

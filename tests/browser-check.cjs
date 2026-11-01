@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const server = http.createServer((req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
-    const file = path.join(root, pathname === '/tests/harness.html' ? 'index.html' : pathname);
+    const file = path.join(root, pathname === '/tests/harness.html' ? 'index.html' : pathname === '/tests/public-harness.html' ? 'cadastro-publico.html' : pathname);
     if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
     try {
         let content = fs.readFileSync(file);
-        if (pathname === '/tests/harness.html') content = content.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+        if (pathname === '/tests/harness.html' || pathname === '/tests/public-harness.html') content = content.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
         res.setHeader('Content-Type', pathname.endsWith('.js') ? 'text/javascript' : pathname.endsWith('.css') ? 'text/css' : 'text/html');
         res.end(content);
     } catch { res.writeHead(404); res.end(); }
@@ -334,6 +334,48 @@ const server = http.createServer((req, res) => {
         });
         assert(reviewed.invalid);assert(reviewed.safe);assert(reviewed.blocked);assert.deepEqual(reviewed.ack,[2]);assert.deepEqual(reviewed.selected,[2]);assert(reviewed.denied);
         console.log('PASS: cadastro rápido, CSV revisado, bloqueios, confirmação explícita e repetição com mesmo identificador.');
+        const campaign=await page.evaluate(async()=>{
+            const model=await import('/js/campaign-model.js');const ui=await import('/js/campaign-settings.js');
+            const originalFrom=window.__client.from,originalRpc=window.__client.rpc;
+            window.__campaign={...structuredClone(model.DEFAULT_CAMPAIGN),revision:1};
+            window.__client.from=table=>table==='campanha_config'?{select(){return this;},eq(){return this;},async single(){return{data:structuredClone(window.__campaign)};}}:originalFrom(table);
+            let writes=0;window.__client.rpc=async(name,args)=>{if(name!=='salvar_configuracao_campanha_v1')return originalRpc(name,args);writes++;if(args.p_revision!==window.__campaign.revision)return{error:{code:'40001',message:'Alterada por outra sessão'}};window.__campaign={...args.p_data,revision:args.p_revision+1};return{data:structuredClone(window.__campaign)};};
+            ui.setupCampaignUI();ui.applyCampaignAccessUI();await ui.openCampaignSettings();
+            document.getElementById('campaign-app_name').value='<img src=x onerror=alert(1)>';
+            document.getElementById('campaign-city').value='Belém';document.getElementById('campaign-uf').value='PA';document.getElementById('campaign-municipalities').value='Belém\nAnanindeua';document.getElementById('campaign-theme').value='green';
+            document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();await Promise.resolve();
+            const safe=document.querySelector('[data-campaign-app]').textContent.includes('<img')&&document.querySelectorAll('[data-campaign-app] img').length===0;
+            const options=[...document.querySelectorAll('#cidadao-cidade option')].map(o=>o.value);
+            const city=document.getElementById('cidadao-cidade');model.setCityValue(city,'Macapá');model.applyCampaignDOM();const preserved=city.value==='Macapá';
+            model.setKnownCities(['Santana']);const historical=[...document.querySelectorAll('#filter-cidade option')].some(o=>o.value==='Santana');
+            window.__campaign.revision++;
+            document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();await Promise.resolve();
+            const stale=document.getElementById('campaign-status').textContent.includes('outra sessão');
+            window.__state.userRole='cadastrador';ui.applyCampaignAccessUI();await ui.openCampaignSettings();document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();
+            const blocked=writes===2&&document.querySelector('[data-campaign-admin]').classList.contains('hidden');
+            window.__state.userRole='admin';ui.resetCampaignUI();ui.applyCampaignAccessUI();model.setCampaign(model.DEFAULT_CAMPAIGN);model.applyCampaignDOM();window.__client.from=originalFrom;window.__client.rpc=originalRpc;
+            return{safe,options,preserved,historical,stale,blocked};
+        });
+        assert(campaign.safe);assert(campaign.options.includes('Belém'));assert(campaign.preserved);assert(campaign.historical);assert(campaign.stale);assert(campaign.blocked);
+        console.log('PASS: configuração por admin, concorrência, identificação segura e municípios atuais/anteriores preservados.');
+        if(typeof page.waitForFunction==='function'){
+            const publicPage=await browser.newPage();const publicErrors=[];publicPage.on('pageerror',e=>publicErrors.push(e.message));
+            await publicPage.route('**/*',route=>{
+                const url=route.request().url();if(url.startsWith(origin))return route.continue();
+                if(url.includes('/rest/v1/campanha_config'))return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify([{id:1,app_name:'Campanha pública teste',campaign_name:'Município teste',candidate_name:'',election_year:2028,city:'Belém',uf:'PA',municipalities:['Belém','Ananindeua'],map_lat:-1.45,map_lng:-48.49,map_zoom:12,theme:'green',revision:2}])});
+                if(url.includes('viacep.com.br'))return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({logradouro:'Rua de teste',bairro:'Centro',localidade:'Cametá',uf:'PA'})});
+                return route.abort();
+            });
+            await publicPage.goto(origin+'/tests/public-harness.html');
+            await publicPage.evaluate(async()=>{await import('/cadastro-publico.js');document.dispatchEvent(new window.Event('DOMContentLoaded'));});
+            await publicPage.waitForFunction(()=>document.title==='Campanha pública teste'&&!document.getElementById('save-btn-public').disabled);
+            const pub=await publicPage.evaluate(()=>({city:document.getElementById('c-cidade').value,uf:document.getElementById('c-estado').value,label:document.querySelector('[data-campaign-label]').textContent}));
+            assert.equal(pub.city,'Belém');assert.equal(pub.uf,'PA');assert(pub.label.includes('Município teste'));
+            await publicPage.evaluate(()=>{const el=document.getElementById('c-cep');el.value='66000-000';el.dispatchEvent(new window.Event('blur'));});
+            await publicPage.waitForFunction(()=>document.getElementById('c-cidade').value==='Cametá');
+            assert.equal(await publicPage.locator('#c-estado').inputValue(),'PA');assert.deepEqual(publicErrors,[]);await publicPage.close();
+            console.log('PASS: cadastro público carrega a configuração e preserva município/UF de CEP fora da lista.');
+        }
         assert.deepEqual(errors, []);
         console.log('PASS: nenhum erro JavaScript não tratado no navegador.');
     } finally { await browser.close(); server.close(); }
