@@ -1,6 +1,6 @@
 # Atualização do sistema — 30/10/2026
 
-Este pacote mantém o layout e a configuração de conexão do ZIP recebido. Não foi instalado no seu servidor nem conectado ao banco real.
+Este pacote mantém o layout e a configuração de conexão do ZIP recebido. A instalação da função SQL e sua verificação transacional foram concluídas. Veja VERIFICACAO.md para os resultados dos testes.
 
 ## Instalação
 
