@@ -107,6 +107,7 @@
                     <li data-fuel-admin class="hidden"><a href="#cotas" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><line x1="4" y1="9" x2="14" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>Cotas de Combustível</a></li>
                     <li><a href="#cobertura" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Cobertura Eleitoral</a></li>
                     <li><a href="#utilizadores" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Utilizadores</a></li>
+                    <li data-audit-admin class="hidden"><a href="#historico" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700">Histórico do sistema</a></li>
                     <li><a href="#backup" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a></li>
                 </ul>
             </nav>
@@ -438,6 +439,19 @@
             </main>
 
             <!-- PÁGINA BACKUP -->
+<main id="historico-page" class="page hidden flex-col flex-1 overflow-y-auto p-6">
+<h1 class="text-2xl font-bold mb-2">Histórico do sistema</h1>
+<p class="text-sm text-gray-600 mb-4">Registros a partir da ativação deste recurso. Consulta exclusiva do administrador. Restaurar um backup não apaga este histórico.</p>
+<form id="audit-filters" class="flex flex-wrap gap-3 mb-4">
+<label>Módulo<select id="audit-table" class="block border rounded p-2"><option value="">Todos</option><option value="cidadaos">Cidadãos</option><option value="demandas">Demandas</option><option value="notes">Anotações</option><option value="veiculos">Veículos</option><option value="cotas_combustivel">Combustível</option><option value="profiles">Perfis</option></select></label>
+<label>Operação<select id="audit-action" class="block border rounded p-2"><option value="">Todas</option><option value="INSERT">Criação</option><option value="UPDATE">Alteração</option><option value="DELETE">Exclusão</option></select></label>
+<label>De<input id="audit-from" type="date" class="block border rounded p-2"></label><label>Até<input id="audit-to" type="date" class="block border rounded p-2"></label>
+<label>Pessoa, registro ou usuário<input id="audit-search" maxlength="160" class="block border rounded p-2"></label>
+<label>ID do registro<input id="audit-record" maxlength="100" class="block border rounded p-2"></label>
+<button class="bg-blue-600 text-white rounded px-4" type="submit">Filtrar</button><button id="audit-clear" class="border rounded px-4" type="button">Limpar</button></form>
+<p id="audit-status" role="status" class="mb-3"></p><div id="audit-list" class="space-y-3"></div><button id="audit-more" type="button" class="hidden border rounded p-3 my-4">Carregar mais</button>
+<section id="audit-detail" class="hidden border rounded bg-white p-4 my-4" aria-label="Detalhes da operação"><button id="audit-close" class="border rounded px-3 py-1" type="button">Fechar detalhes</button><h2 class="text-xl font-bold my-2">Dados da operação</h2><div id="audit-detail-content" class="overflow-x-auto"></div></section>
+</main>
             <main id="backup-page" class="page hidden flex flex-col flex-1 overflow-hidden">
                 <header class="bg-white p-6 border-b flex-shrink-0">
                     <h1 class="text-2xl font-bold text-gray-800">Backup de Dados</h1>

@@ -31,3 +31,9 @@ A verificação transacional de recuperação e retorno à cópia anterior foi c
 ## Demandas: responsável, prazo e prioridade
 
 Passaram os testes isolados de criação, edição, alteração de status sem perda de campos, autoria, nota atômica, concorrência, limites e permissões. Passaram os testes de datas locais, filtros e compatibilidade com backups anteriores. Os fluxos da interface foram testados em Chromium com backend simulado. A instalação foi concluída; a verificação transacional de criação, edição, preservação de campos, concorrência e compatibilidade com backups antigos passou e foi revertida ao final.
+
+## Histórico de alterações e exclusões
+
+Passaram os testes isolados de instalação repetida, autoria, comparação de valores, atualização sem mudanças, rollback, criação e exclusão dos módulos, exclusão em cascata, acesso por perfil, bloqueio de alteração dos eventos, paginação e preservação do histórico na restauração. Interface testada em DOM simulado e Chromium: paginação, detalhes, conteúdo tratado como texto e bloqueio do cadastrador.
+
+Instalação concluída. A verificação transacional de criação, alteração, exclusão, autoria, comparação de valores, proteção dos eventos e conferência de restauração passou e foi revertida ao final, sem dados sintéticos restantes. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
