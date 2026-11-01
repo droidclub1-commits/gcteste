@@ -1,3 +1,4 @@
+import { canAccessFuel, requireFuelAdmin, applyFuelAccessUI } from './fuel-access.js';
 import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
 // VEÍCULOS — aba dedicada com o total de veículos cadastrados, quantos
@@ -32,6 +33,7 @@ export function resetVeiculos() {
 // é admin — a checagem não depende só da UI escondida em users.js.
 // Ver o script SQL fornecido para criar essa função e a policy de RLS.
 export async function resetVeiculosPosEleicao() {
+    if (!requireFuelAdmin()) throw new Error('Acesso restrito ao administrador.');
     const { data, error } = await sb.rpc('reset_veiculos_pos_eleicao');
     if (error) throw error;
     // A função retorna { veiculos_atualizados, cotas_apagadas }
@@ -50,6 +52,7 @@ export function setupVeiculosFiltro() {
 
 export async function loadVeiculosPage(tipoFiltro = veiculosFiltroTipo) {
     veiculosFiltroTipo = tipoFiltro;
+    applyFuelAccessUI();
     const tbody = $('veiculos-tbody');
     const empty = $('veiculos-empty');
     const summary = $('veiculos-summary');
@@ -121,9 +124,9 @@ export async function loadVeiculosPage(tipoFiltro = veiculosFiltroTipo) {
             <td class="px-4 py-3">${escapeHtml(v.cor || '—')}</td>
             <td class="px-4 py-3">${v.adesivado ? '<span class="text-green-600 font-semibold text-xs">Sim</span>' : '<span class="text-gray-400 text-xs">Não</span>'}</td>
             <td class="px-4 py-3 text-gray-600 text-xs">${escapeHtml(leaderName(v.cidadao?.leader))}</td>
-            <td class="px-4 py-3"></td>`;
+            <td data-fuel-admin class="px-4 py-3${canAccessFuel() ? '' : ' hidden'}"></td>`;
         const actionsTd = tr.lastElementChild;
-        if (v.cidadao) {
+        if (v.cidadao && canAccessFuel()) {
             const btn = document.createElement('button');
             btn.className = 'text-blue-600 hover:text-blue-800 text-xs font-semibold whitespace-nowrap';
             btn.textContent = 'Ver abastecimento';

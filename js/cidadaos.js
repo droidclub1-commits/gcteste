@@ -1,3 +1,4 @@
+import { canAccessFuel } from './fuel-access.js';
 import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
 // CIDADAOS — listagem/paginação server-side, filtros, CRUD, modal
@@ -756,7 +757,10 @@ export async function openDetailsModal(cidadaoId) {
         $('details-veiculos-list').textContent = '';
     });
     const historyBtn = $('details-view-cotas-btn');
-    if (historyBtn) historyBtn.onclick = () => _onOpenCotaHistory(cidadao);
+    if (historyBtn) {
+        historyBtn.classList.toggle('hidden', !canAccessFuel());
+        historyBtn.onclick = canAccessFuel() ? () => _onOpenCotaHistory(cidadao) : null;
+    }
     const childrenEl = $('details-children');
     const totalFilhos = (cidadao.sons || 0) + (cidadao.daughters || 0);
     childrenEl.innerHTML = `<strong>Família:</strong> ${totalFilhos} filho(s)`;
