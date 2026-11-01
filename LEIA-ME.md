@@ -90,4 +90,16 @@ Antes de publicar esta etapa, aplique `sql/004_demandas_acompanhamento.sql` apó
 - As permissões de leitura e edição dos perfis permanecem as mesmas. Combustível continua exclusivo do administrador.
 - Backups novos incluem os campos. Na restauração de arquivos anteriores, as demandas recuperadas recebem os valores padrão dos campos que ainda não existiam.
 
-O histórico completo de alterações e exclusões do sistema continua como um item separado do checklist.
+
+
+## Histórico do sistema
+
+Aplique `sql/005_historico_auditoria.sql` depois das instalações anteriores, antes de publicar a interface.
+
+O administrador consulta o menu Histórico do sistema, filtra módulo, operação, período, texto e ID do registro, e abre a comparação dos valores anteriores e posteriores. As datas usam o fuso local do navegador; o último dia é incluído. A listagem carrega 25 operações por vez.
+
+A captura ocorre no banco, na mesma transação da operação, para cidadãos, demandas, anotações, veículos, combustível e perfis. Exclusões em cascata também geram registros. Não são registrados logins, senhas, tokens, conteúdo de fotos ou alterações anteriores à instalação. Atualizações sem mudança de campos relevantes são ignoradas.
+
+A autoria vem da sessão autenticada, e não do proprietário do registro. Serviços sem usuário identificado aparecem como Sistema/integração; operações diretas no banco, como Manutenção no banco. O histórico só permite leitura para administradores da aplicação; não há API de edição ou exclusão dos eventos. O proprietário do banco mantém seus privilégios de manutenção.
+
+A restauração identifica os eventos com o ID da operação e preserva todo o histórico existente. A conferência do backup reverte seus eventos de teste. O JSON portátil e as cópias de recuperação da aplicação não incluem nem substituem a trilha de auditoria; para recuperá-la após perda do banco, mantenha também backup do banco completo, incluindo o esquema audit_private. Os valores anteriores continuam armazenados mesmo após a exclusão do registro original.

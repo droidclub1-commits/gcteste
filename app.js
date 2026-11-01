@@ -1,3 +1,4 @@
+import { setupAuditUI, resetAudit, applyAuditAccessUI, loadAudit } from './js/audit.js';
 import { setupRestoreUI, resetRestoreUI, refreshSafetyCopies } from './js/restore.js';
 import { applyFuelAccessUI, requireFuelAdmin } from './js/fuel-access.js';
 import { showToast, getInitials, getStatusInfo, formatarData, getFaixaEtaria } from './js/utils.js';
@@ -84,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeMainApp().finally(() => { _initLock = false; });
             }
         } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+            resetAudit();
             state.user = null;
             state.userRole = null;
             state.allCidadaos = []; state.allDemandas = []; state.allLeaders = [];
@@ -128,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finally { _initLock = false; }
             }
         } else {
+            resetAudit();
             state.user = null;
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
@@ -136,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     manageSessionOnLoad();
     async function initializeMainApp() {
         if (appInitialized) return;
-        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI();
+        state.allCidadaos = []; state.allDemandas = []; state.allLeaders = []; resetUsers(); resetCotas(); resetVeiculos(); resetRestoreUI(); resetAudit();
         state.userRole = null;
         await new Promise(resolve => setTimeout(resolve, 50)); 
         logoBtn = document.getElementById('logo-btn'); 
@@ -365,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Veículos
         setupVeiculosFiltro();
         setupRestoreUI();
+        setupAuditUI();
         // Toggle da seção Veículos no modal de cidadão (Sim/Não → lista dinâmica)
         setupVeiculoToggle();
         const addUserBtn = document.getElementById('add-user-btn');
@@ -450,6 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Ajusta interface conforme o perfil do utilizador ────────────────
     function applyRoleUI() {
         applyFuelAccessUI();
+        applyAuditAccessUI();
         if (state.userRole === 'cadastrador') {
             // Esconde funcionalidades exclusivas do admin
             const els = [
@@ -600,6 +605,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // BACKUP DE DADOS
     // ═══════════════════════════════════════════════════════════════
     function switchPage(pageId) {
+        if (pageId === 'historico-page') {
+            if (!state.user || state.userRole !== 'admin') return;
+            loadAudit();
+        }
         if (pageId === 'cotas-page' && !requireFuelAdmin()) return;
         if (pageId === 'backup-page' && (!state.user || state.userRole !== 'admin')) return;
         if (pageId === 'backup-page') {
@@ -613,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            const flexPages = ['dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
+            const flexPages = ['historico-page','dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
             if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {

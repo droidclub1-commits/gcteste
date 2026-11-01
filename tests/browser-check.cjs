@@ -284,6 +284,22 @@ const server = http.createServer((req, res) => {
         });
         assert.equal(photo.requested,'owner/foto.png');assert.equal(photo.signed,'https://example.test/signed-image');assert.equal(photo.images,0);
         console.log('PASS: fotos internas usam URL assinada; conteúdo inválido não injeta imagem ou código.');
+        const audit=await page.evaluate(async()=>{
+            const {setupAuditUI,loadAudit,applyAuditAccessUI}=await import('/js/audit.js');
+            setupAuditUI();applyAuditAccessUI();
+            const original=window.__client.rpc;let calls=0;
+            window.__client.rpc=async(name,args)=>{calls++;return {data:name==='auditoria_detalhe_v1'?{record_id:'record',actor_label:'Admin',action:'UPDATE',changed_fields:['name'],before_data:{name:'Anterior'},after_data:{name:'<img src=x onerror=alert(1)>'}}:{events:[{id:args.p_after_id?'2':'1',occurred_at:'2026-11-01T12:00:00Z',table_name:'cidadaos',record_label:'<img src=x onerror=alert(1)>',action:'UPDATE',actor_label:'Admin',origin:'aplicacao'}],has_more:!args.p_after_id,next_cursor:{time:'2026-11-01T12:00:00Z',id:'1'}}};};
+            await loadAudit();document.querySelector('#audit-list button').click();await Promise.resolve();await Promise.resolve();
+            const safe=document.querySelectorAll('#audit-list img,#audit-detail img').length===0;
+            const detail=document.getElementById('audit-detail-content').textContent;
+            await loadAudit(true);const count=document.getElementById('audit-list').children.length;
+            window.__state.userRole='cadastrador';applyAuditAccessUI();const prior=calls;await loadAudit();
+            const blocked=calls===prior&&document.getElementById('audit-list').children.length===0;
+            window.__state.userRole='admin';applyAuditAccessUI();window.__client.rpc=original;
+            return{safe,detail,count,blocked};
+        });
+        assert.equal(audit.safe,true);assert(audit.detail.includes('<img'));assert.equal(audit.count,2);assert.equal(audit.blocked,true);
+        console.log('PASS: histórico do administrador, paginação, comparação segura e bloqueio de cadastrador.');
         assert.deepEqual(errors, []);
         console.log('PASS: nenhum erro JavaScript não tratado no navegador.');
     } finally { await browser.close(); server.close(); }
