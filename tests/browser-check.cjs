@@ -38,12 +38,16 @@ const server = http.createServer((req, res) => {
                     let start = 0, end = Infinity, single = false, max = Infinity;
                     const q = {
                         select() { return q; },
-                        eq(key, value) { filters.push(row => row[key] === value); return q; },
+                        eq(key, value) { filters.push(row => key.split('.').reduce((a,k)=>a?.[k],row) === value); return q; },
                         is(key, value) { filters.push(row => (row[key] ?? null) === value); return q; },
                         not(key, op, value) { filters.push(row => op === 'is' ? row[key] != null : row[key] !== value); return q; },
                         gt(key, value) { filters.push(row => row[key] > value); return q; },
                         lte(key, value) { filters.push(row => row[key] <= value); return q; },
-                        ilike() { return q; }, or() { return q; },
+                        ilike(key,value) { const needle=String(value).replace(/%/g,'').toLowerCase(); filters.push(row=>String(key.split('.').reduce((a,k)=>a?.[k],row) ?? '').toLowerCase().includes(needle));return q; },
+                        lt(key,value) {filters.push(row=>row[key]!=null && row[key]<value);return q;},
+                        gte(key,value) {filters.push(row=>row[key]!=null && row[key]>=value);return q;},
+                        neq(key,value) {filters.push(row=>row[key]!==value);return q;},
+                        or() { return q; },
                         order(key, options = {}) { sorts.push([key, options.ascending !== false]); return q; },
                         limit(n) { max = n; return q; },
                         range(a, b) { start = a; end = b; return q; },
@@ -53,7 +57,7 @@ const server = http.createServer((req, res) => {
                         delete() { window.__mutations++; throw new Error('Mutação direta inesperada'); },
                         then(resolve, reject) {
                             if (window.__failTable === table) return Promise.resolve({ error: { message: 'simulated read failure' } }).then(resolve, reject);
-                            const rows = window.__db[table].filter(row => filters.every(f => f(row))).slice();
+                            const rows = window.__db[table].map(row=>table==='demandas'?{...row,cidadao:window.__db.cidadaos.find(c=>c.id===row.cidadao_id)||row.cidadao}:row).filter(row => filters.every(f => f(row))).slice();
                             rows.sort((a, b) => {
                                 for (const [key, asc] of sorts) { const cmp = String(a[key] ?? '').localeCompare(String(b[key] ?? '')); if (cmp) return asc ? cmp : -cmp; }
                                 return 0;
@@ -65,6 +69,14 @@ const server = http.createServer((req, res) => {
                 },
                 async rpc(name, args) {
                     window.__rpcCalls.push({ name, args });
+                    if (name === 'salvar_demanda_v1') {
+                        const old=window.__db.demandas.find(d=>d.id===args.p_id);
+                        if (args.p_id && !old) return {error:{message:'Não encontrada'}};
+                        if (args.p_expected_updated_at && old.updated_at!==args.p_expected_updated_at) return {error:{code:'40001',message:'A demanda foi alterada'}};
+                        const row={status:'pending',prioridade:'normal',user_id:window.__state.user.id,...old,...args.p_data,id:old?.id || crypto.randomUUID(),updated_at:new Date(Date.now()+(window.__demClock=(window.__demClock||0)+1)*1000).toISOString()};
+                        if(old)window.__db.demandas=window.__db.demandas.map(d=>d.id===row.id?row:d);else window.__db.demandas.push(row);
+                        return {data:row};
+                    }
                     if (name === 'exportar_aplicacao_v1') {
                         if (window.__failTable) return { error: { message: 'simulated read failure' } };
                         return { data: structuredClone(Object.fromEntries(['cidadaos','demandas','notes','veiculos','cotas_combustivel'].map(k=>[k,window.__db[k]]))) };
@@ -142,6 +154,41 @@ const server = http.createServer((req, res) => {
         assert.equal(csv.trim().split(/\r?\n/).length, 1206);
         assert.match(csv, /'=1\+1/);
         console.log('PASS: histórico e CSV incluem 1.205 cotas; HTML e fórmulas ficam neutralizados.');
+
+        const demand = await page.evaluate(async()=>{
+            const mod=await import('/js/demandas.js');window.__dem=mod;
+            const citizen=window.__db.cidadaos[0];window.__state.allCidadaos=[citizen];
+            await mod.openDemandaModal(citizen.id);
+            document.getElementById('demanda-title').value='Acompanhamento de teste';
+            document.getElementById('demanda-responsavel').value='Ana';
+            document.getElementById('demanda-prazo').value='2000-01-01';
+            document.getElementById('demanda-prioridade').value='urgente';
+            await mod.handleDemandaFormSubmit({preventDefault(){}});
+            const created=window.__db.demandas.find(d=>d.title==='Acompanhamento de teste');
+            await mod.openDemandaModal(null,created.id);
+            document.getElementById('demanda-edit-status').value='completed';
+            document.getElementById('demanda-responsavel').value='Bruna <img src=x onerror=alert(1)>';
+            await mod.handleDemandaFormSubmit({preventDefault(){}});
+            const edited=window.__db.demandas.find(d=>d.id===created.id);
+            await mod.openDemandaDetailsModal(edited.id);
+            return{created,edited,tracking:document.getElementById('details-demanda-tracking').textContent,injected:document.querySelectorAll('#details-demanda-tracking img').length};
+        });
+        assert.equal(demand.created.prioridade,'urgente');assert.equal(demand.created.responsavel,'Ana');
+        assert.equal(demand.edited.prazo,'2000-01-01');assert.equal(demand.edited.status,'completed');assert.equal(demand.edited.prioridade,'urgente');
+        assert.match(demand.tracking,/Bruna/);assert.doesNotMatch(demand.tracking,/Em atraso/);assert.equal(demand.injected,0);
+        const filtered=await page.evaluate(async()=>{
+            document.getElementById('demanda-filter-responsavel').value='Bruna';
+            document.getElementById('demanda-filter-prioridade').value='urgente';
+            await window.__dem.loadDemandasPage(true);
+            const matching=window.__state.allDemandas.length;
+            document.getElementById('demanda-filter-prazo').value='atrasadas';
+            await window.__dem.loadDemandasPage(true);
+            const overdue=window.__state.allDemandas.length;
+            await window.__dem.clearDemandaFilters();
+            return{matching,overdue};
+        });
+        assert.equal(filtered.matching,1);assert.equal(filtered.overdue,0);
+        console.log('PASS: demandas criam/editam responsável, prazo e prioridade; filtros funcionam e concluídas não ficam em atraso.');
 
         // Exportação JSON completa sem dados reais e sem acessar servidores externos.
         await page.evaluate(() => {
