@@ -7,7 +7,7 @@
 | Imediata | Correção de filtros, totais e paginação dos relatórios | Concluído |
 | Alta | Combustível por veículo e por período | Adiado pelo usuário |
 | Alta | Responsável, prazo e prioridade nas demandas | Concluído |
-| Alta | Histórico de alterações e exclusões | Implementado e testado; instalação pendente |
+| Alta | Histórico de alterações e exclusões | Concluído |
 | Média | Cadastro rápido e importação com revisão de duplicidades | Pendente |
 | Média | Configuração por campanha e município | Pendente |
 
