@@ -30,4 +30,4 @@ A verificação transacional de recuperação e retorno à cópia anterior foi c
 
 ## Demandas: responsável, prazo e prioridade
 
-Passaram os testes isolados de criação, edição, alteração de status sem perda de campos, autoria, nota atômica, concorrência, limites e permissões. Passaram os testes de datas locais, filtros e compatibilidade com backups anteriores. Os fluxos da interface foram testados em Chromium com backend simulado. A instalação desta etapa deve ser concluída antes da publicação.
+Passaram os testes isolados de criação, edição, alteração de status sem perda de campos, autoria, nota atômica, concorrência, limites e permissões. Passaram os testes de datas locais, filtros e compatibilidade com backups anteriores. Os fluxos da interface foram testados em Chromium com backend simulado. A instalação foi concluída; a verificação transacional de criação, edição, preservação de campos, concorrência e compatibilidade com backups antigos passou e foi revertida ao final.
