@@ -63,3 +63,7 @@ Não foi acrescentado um botão de restauração automática. Para restaurar o J
 ## Verificação local
 
 Instale as dependências de desenvolvimento com `npm ci`. Execute `npm test`, `npm run test:sql` e `npm run test:dom` com Node.js. Os testes SQL usam PostgreSQL isolado via PGlite com esquema e políticas simulados; os de DOM usam LinkeDOM, sem navegador real. Os testes cobrem paginação com limite reduzido do servidor, erros parciais, idade, filtros, CSV e composição do backup. O script `tests/browser-check.cjs` (`npm run test:browser`) é uma conferência adicional com dados simulados e exige instalar Playwright (`npm install --no-save playwright`) e Chromium (`npx playwright install chromium`). Nenhum teste usa dados reais.
+
+## Combustível: acesso exclusivo do administrador
+
+Aplique também `sql/002_combustivel_somente_admin.sql` antes de publicar esta atualização. Menu, histórico, lançamentos e relatórios de combustível são exclusivos do administrador. A regra também é aplicada no banco, inclusive contra acesso direto à API. Os acessos dos demais módulos não são alterados.

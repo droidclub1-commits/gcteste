@@ -1,3 +1,4 @@
+import { canAccessFuel, requireFuelAdmin, applyFuelAccessUI } from './fuel-access.js';
 import { escapeHtml } from './utils.js';
 import { fetchAllRows, csvCell, dateOnly, downloadBlob } from './data.js';
 // ═══════════════════════════════════════════════════════════════
@@ -11,8 +12,8 @@ import { fetchAllRows, csvCell, dateOnly, downloadBlob } from './data.js';
 // de nova/editar cota é feita no servidor (ilike + limit), pelo mesmo
 // motivo: não dá pra pré-carregar 25k+ cidadãos só pra um autocomplete.
 //
-// Editar/Apagar um registo de cota é restrito a admin (state.userRole)
-// — igual à restrição de excluir cidadão em buildCidadaoCard.
+// Todo o módulo, inclusive consultas e relatórios, é exclusivo do admin.
+// O banco reforça essa regra por uma política RLS restritiva.
 // ═══════════════════════════════════════════════════════════════
 
 import { showToast, formatarData } from './utils.js';
@@ -27,10 +28,14 @@ let cotaFiltroLiderId = '';
 export function resetCotas() {
     editingCotaId = null;
     cotaFiltroLiderId = '';
+    currentHistoryCidadao = null;
+    currentHistoryData = [];
+    applyFuelAccessUI();
 }
 
 // ── Modal "Nova Cota" / "Editar Cota" ───────────────────────────
 export function openCotaModal(cotaToEdit = null) {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     const form = $('cota-form');
     form.reset();
     editingCotaId = cotaToEdit ? cotaToEdit.id : null;
@@ -110,6 +115,7 @@ export function setupCotaCidadaoAutocomplete() {
 
 export async function handleCotaFormSubmit(e) {
     e.preventDefault();
+    if (!requireFuelAdmin()) return;
     const saveBtn = $('save-cota-btn');
     const cidadaoId = $('cota-cidadao-id').value;
     if (!cidadaoId) {
@@ -151,7 +157,7 @@ export async function handleCotaFormSubmit(e) {
 }
 
 export async function confirmDeleteCota(cota) {
-    if (state.userRole !== 'admin') return;
+    if (!requireFuelAdmin()) return;
     if (!confirm(`Apagar o registo de cota de "${cota.cidadao?.name || 'cidadão'}" em ${formatarData(cota.data)}? Esta ação não pode ser desfeita.`)) return;
     try {
         const { error } = await sb.from('cotas_combustivel').delete().eq('id', cota.id);
@@ -232,6 +238,7 @@ export function clearCotasFiltro() {
 // liderId opcional para filtrar só os cidadãos daquela liderança
 // (usa !inner pra poder filtrar em cima da tabela unida).
 export async function loadCotasPage(liderId = '') {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     const tbody = $('cotas-tbody');
     const empty = $('cotas-empty');
     if (!tbody) return;
@@ -250,6 +257,7 @@ export async function loadCotasPage(liderId = '') {
     if (liderId) query = query.eq('cidadao.leader', liderId);
 
     const { data, error } = await query;
+    if (!canAccessFuel()) { resetCotas(); applyFuelAccessUI(); return; }
 
     if (error) {
         console.error(error);
@@ -302,6 +310,7 @@ let currentHistoryCidadao = null;
 let currentHistoryData = [];
 
 export async function openCotaHistoryModal(cidadao) {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     currentHistoryCidadao = cidadao;
     const modal = $('cota-history-modal');
     const content = $('cota-history-modal-content');
@@ -327,6 +336,7 @@ export async function openCotaHistoryModal(cidadao) {
         if (currentHistoryCidadao?.id === cidadao.id) listEl.textContent = 'Erro ao carregar histórico.';
         return;
     }
+    if (!canAccessFuel()) { resetCotas(); applyFuelAccessUI(); return; }
     if (currentHistoryCidadao?.id !== cidadao.id) return;
     currentHistoryData = data || [];
     if (currentHistoryData.length === 0) {
@@ -368,6 +378,7 @@ export function closeCotaHistoryModal() {
 }
 
 export function downloadCotaHistoryCSV() {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     if (!currentHistoryCidadao || !currentHistoryData.length) {
         showToast('Nenhum dado para baixar.', 'warning');
         return;
@@ -381,6 +392,7 @@ export function downloadCotaHistoryCSV() {
 }
 
 export function printCotaHistory() {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     if (!currentHistoryCidadao || !currentHistoryData.length) {
         showToast('Nenhum dado para imprimir.', 'warning');
         return;
@@ -434,6 +446,7 @@ export function printCotaHistory() {
 // junto com o que todos os seus liderados pegaram, no mesmo total —
 // exatamente o pedido original.
 export async function generateCotasPorLiderancaExcel() {
+    if (!requireFuelAdmin()) { applyFuelAccessUI(); return; }
     showToast('A gerar relatório...', 'info');
     let cotas;
     try {
@@ -442,6 +455,7 @@ export async function generateCotasPorLiderancaExcel() {
     } catch (error) {
         showToast('Erro ao gerar relatório: ' + error.message, 'error'); return;
     }
+    if (!canAccessFuel()) { resetCotas(); applyFuelAccessUI(); return; }
     if (!cotas.length) {
         showToast('Nenhuma cota registada ainda.', 'warning');
         return;

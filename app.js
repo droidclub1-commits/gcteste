@@ -1,3 +1,4 @@
+import { applyFuelAccessUI, requireFuelAdmin } from './js/fuel-access.js';
 import { showToast, getInitials, getStatusInfo, formatarData, getFaixaEtaria } from './js/utils.js';
 import { SUPABASE_URL, SUPABASE_KEY, EDGE_FUNCTION_URL, sb } from './js/config.js';
 import { applyCidadaoFilters, fetchAllRows } from './js/data.js';
@@ -438,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Ajusta interface conforme o perfil do utilizador ────────────────
     function applyRoleUI() {
+        applyFuelAccessUI();
         if (state.userRole === 'cadastrador') {
             // Esconde funcionalidades exclusivas do admin
             const els = [
@@ -588,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // BACKUP DE DADOS
     // ═══════════════════════════════════════════════════════════════
     function switchPage(pageId) {
+        if (pageId === 'cotas-page' && !requireFuelAdmin()) return;
         if (pageId === 'backup-page') setTimeout(renderBackupHistory, 50);
         document.querySelectorAll('.page').forEach(page => {
             page.classList.add('hidden');

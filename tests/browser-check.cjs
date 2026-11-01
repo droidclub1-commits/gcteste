@@ -150,6 +150,35 @@ const server = http.createServer((req, res) => {
         assert.equal(failedBackup.result, false); assert.match(failedBackup.status, /Nenhum arquivo parcial/);
         console.log('PASS: falha num módulo interrompe o backup com aviso explícito.');
 
+        const restricted = await page.evaluate(async () => {
+            const access = await import('/js/fuel-access.js');
+            window.__state.userRole = 'cadastrador'; access.applyFuelAccessUI();
+            const before = window.__rpcCalls.length;
+            await window.__cotas.openCotaHistoryModal({ id: 'c1', name: 'Negado' });
+            window.__cotas.openCotaModal();
+            await window.__cotas.loadCotasPage();
+            await window.__cotas.generateCotasPorLiderancaExcel();
+            const vehicles = await import('/js/veiculos.js');
+            await vehicles.loadVeiculosPage();
+            return {
+                menuHidden: document.querySelector('[data-fuel-admin] a[href="#cotas"]').parentElement.classList.contains('hidden'),
+                historyHidden: document.getElementById('cota-history-modal').classList.contains('hidden'),
+                modalHidden: document.getElementById('cota-modal').classList.contains('hidden'),
+                historyRows: document.querySelectorAll('#cota-history-list tbody tr').length,
+                fuelButtons: [...document.querySelectorAll('#veiculos-tbody button')].filter(b => b.textContent === 'Ver abastecimento').length,
+                rpcCalls: window.__rpcCalls.length - before
+            };
+        });
+        assert.equal(restricted.menuHidden,true); assert.equal(restricted.historyHidden,true);
+        assert.equal(restricted.modalHidden,true); assert.equal(restricted.historyRows,0);
+        assert.equal(restricted.fuelButtons,0); assert.equal(restricted.rpcCalls,0);
+        console.log('PASS: cadastrador não acessa menu, histórico, formulário ou relatório de combustível.');
+        await page.evaluate(async () => {
+            window.__state.userRole = 'admin';
+            const access = await import('/js/fuel-access.js'); access.applyFuelAccessUI();
+        });
+        assert.equal(await page.evaluate(() => document.querySelector('[data-fuel-admin] a[href="#cotas"]').parentElement.classList.contains('hidden')),false);
+        console.log('PASS: administrador mantém o acesso ao combustível.');
         assert.deepEqual(errors, []);
         console.log('PASS: nenhum erro JavaScript não tratado no navegador.');
     } finally { await browser.close(); server.close(); }
