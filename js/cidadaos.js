@@ -1,3 +1,4 @@
+import { renderCitizenPhoto, storagePhotoRef } from './photos.js';
 import { canAccessFuel } from './fuel-access.js';
 import { escapeHtml } from './utils.js';
 // ═══════════════════════════════════════════════════════════════
@@ -182,10 +183,7 @@ export async function handleCidadaoFormSubmit(e) {
                 .from('fotos-cidadaos')
                 .upload(filePath, file);
             if (uploadError) throw uploadError;
-            const { data } = sb.storage
-                .from('fotos-cidadaos')
-                .getPublicUrl(filePath);
-            photoUrl = data.publicUrl;
+            photoUrl = storagePhotoRef(filePath);
         }
         const cidadaoLogradouro = $('cidadao-logradouro'), cidadaoBairro = $('cidadao-bairro'),
               cidadaoCidade = $('cidadao-cidade'), cidadaoEstado = $('cidadao-estado');
@@ -315,9 +313,7 @@ export function buildCidadaoCard(cidadao) {
     const photoUrl = cidadao.photourl;
     card.innerHTML = `
         <div class="flex items-center gap-4 mb-4">
-            ${photoUrl
-                ? `<img src="${photoUrl}" alt="" loading="lazy" class="w-16 h-16 rounded-full object-cover bg-gray-200" onerror="this.src='https://placehold.co/100x100/E2E8F0/64748B?text=${encodeURIComponent(initials)}'">`
-                : `<div class="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-2xl font-bold">${initials}</div>`}
+            <div class="card-photo"></div>
             <div class="flex-1 min-w-0"><h3 class="text-lg font-bold text-gray-800 truncate"></h3><p class="text-sm text-gray-600 card-type"></p></div>
         </div>
         <div class="space-y-2 text-sm text-gray-700 mb-4 flex-1">
@@ -336,6 +332,7 @@ export function buildCidadaoCard(cidadao) {
             </div>
         </div>`;
     // textContent para prevenir XSS
+    renderCitizenPhoto(card.querySelector('.card-photo'), photoUrl, cidadao.name, true);
     card.querySelector('h3').textContent = cidadao.name;
     card.querySelector('.card-type').textContent = cidadao.type;
     card.querySelector('.email-cell').textContent = cidadao.email || 'N/A';
@@ -717,19 +714,7 @@ export async function openDetailsModal(cidadaoId) {
     const detailsModal = $('cidadao-details-modal');
     const content = detailsModal.querySelector('.transform');
     const photoEl = $('details-photo');
-    photoEl.textContent = '';
-    const placeholder = document.createElement('div');
-    placeholder.className = 'w-24 h-24 rounded-full bg-blue-500 text-white flex items-center justify-center text-4xl font-bold';
-    placeholder.textContent = getInitials(cidadao.name);
-    let photoUrl;
-    try { const parsed = new URL(cidadao.photourl); if (['http:', 'https:'].includes(parsed.protocol)) photoUrl = parsed.href; } catch { /* sem foto válida */ }
-    if (photoUrl) {
-        const image = document.createElement('img');
-        image.className = 'w-24 h-24 rounded-full object-cover bg-gray-200';
-        image.alt = cidadao.name || ''; image.src = photoUrl;
-        image.onerror = () => { image.replaceWith(placeholder); };
-        photoEl.appendChild(image);
-    } else { photoEl.appendChild(placeholder); }
+    renderCitizenPhoto(photoEl, cidadao.photourl, cidadao.name);
     $('details-name').textContent = cidadao.name;
     $('details-type').textContent = cidadao.type;
     $('details-email').textContent = cidadao.email || 'Não informado';

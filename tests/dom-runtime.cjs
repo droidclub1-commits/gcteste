@@ -38,7 +38,11 @@ const chromium = { async launch() { return { async close() {}, async newPage() {
             const code = fn.toString().replace(/import\('([^']+)'\)/g, (_, target) => `import(${JSON.stringify(pathToFileURL(path.join(root, target)).href)})`);
             return new Function('return (' + code + ')()')();
         },
-        locator: selector => ({ textContent: async () => document.querySelector(selector).textContent }),
+        locator: selector => ({
+            textContent: async () => document.querySelector(selector).textContent,
+            click: async () => document.querySelector(selector).click(),
+            setInputFiles: async file => { const el=document.querySelector(selector); el.files=[{size:file.buffer.length,text:async()=>file.buffer.toString()}];el.dispatchEvent(new window.Event('change')); }
+        }),
         waitForEvent: async () => new Promise(resolve => { pendingDownload = resolve; })
     };
 } }; } };

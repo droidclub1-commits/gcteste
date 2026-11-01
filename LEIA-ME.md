@@ -24,19 +24,29 @@ A partir desta versão, salvar cidadãos exige a nova função SQL. Se ela não 
 - Campos dinâmicos foram protegidos nas telas de veículos, combustível, cobertura, família e notas; avisos usam texto e fotos são montadas com elementos DOM.
 - CSVs neutralizam entradas que poderiam ser interpretadas como fórmulas pelo Excel.
 
-## Escopo do backup JSON
+## Backup e restauração da aplicação
 
-O JSON de versão 2 inclui as linhas visíveis de `cidadaos`, `demandas`, `notes`, `veiculos`, `cotas_combustivel` e `profiles`, além do conteúdo base64 das fotos referenciadas do bucket `fotos-cidadaos`. O manifesto informa contagens, horários e exclusões.
+Instale também `sql/003_backup_restauracao.sql` antes de publicar esta versão. O administrador encontra as ações na página Backup.
 
-- As permissões do banco continuam valendo. Mesmo um administrador da aplicação só exporta o que suas políticas RLS permitem consultar. Verifique se elas dão a visibilidade esperada.
-- Imagens de outros sites ficam apenas como referências externas no manifesto, e a interface avisa que há ressalvas. Se uma foto do próprio sistema falhar ao baixar, nenhum arquivo parcial é gerado.
-- Há um limite de 100 MB de fotos antes da codificação. Acima disso, é necessário backup de Storage no servidor; a exportação no navegador é interrompida com mensagem.
-- As tabelas são consultadas sequencialmente: não há snapshot transacional entre tabelas. Pause cadastros, edições e exclusões enquanto exporta.
-- Não inclui senhas/contas Supabase Auth, políticas, funções SQL, configuração do projeto ou arquivos de Storage sem referência. Um backup de recuperação integral do projeto deve ser feito no servidor.
-- CSV é apenas uma exportação de cidadãos, sem os outros módulos e sem fotos.
-- O histórico local registra a geração do download, não comprova que o arquivo foi guardado ou validado posteriormente.
+1. **Baixar JSON:** lê os cinco módulos em um snapshot transacional e copia as fotos referenciadas. O formato v3 inclui verificadores SHA-256 de integridade.
+2. **Conferir arquivo:** valida módulos, identificadores, vínculos, contagens e fotos. O servidor testa os tipos e constraints em uma execução revertida. A tabela compara quantidades atuais e futuras.
+3. **Restaurar:** exige a marcação de ciência e o texto RESTAURAR. Substitui cidadãos, demandas, notas, veículos e combustível em uma única transação. Preserva IDs, autoria, datas e vínculos. Não importa perfis nem executa SQL do arquivo.
+4. **Cópia anterior:** o estado dos registros imediatamente anterior à restauração fica em uma área privada do banco. A lista permite conferir e restaurar essa cópia pelo mesmo fluxo. Fotos anteriores não são apagadas.
 
-Não foi acrescentado um botão de restauração automática. Para restaurar o JSON, um administrador técnico deve validar o esquema, recuperar contas de acesso por seu backup próprio, importar registros mantendo IDs e relações e repor `files[].base64` nos caminhos originais do bucket. Faça isso primeiro em uma cópia do projeto. Sem a estrutura SQL e as funções de servidor originais, não é possível garantir a recuperação integral apenas com este pacote.
+As fotos recuperadas são enviadas para caminhos novos. Um bucket de fotos inexistente é criado privado; a interface usa URLs temporárias assinadas para exibir fotos internas. As políticas permitem ao administrador recuperar fotos e ao cadastrador visualizar as fotos de cidadãos aos quais tem acesso. Imagens externas continuam dependentes de seus sites de origem; o arquivo e a conferência avisam sobre essa limitação.
+
+### Proteções e limites
+
+- A restauração é exclusiva do administrador no servidor. Contas/senhas Auth, perfis, políticas, funções e configuração do projeto não são importados. Para recuperar um projeto perdido por completo, é necessário também o backup da infraestrutura e das contas de acesso.
+- Os usuários referenciados pelo campo de autoria precisam existir no projeto de destino. A ausência é recusada pela constraint; não se transfere autoria silenciosamente ao administrador.
+- Se os registros mudarem entre a conferência e a execução, a restauração é recusada. Reconfira o arquivo antes de tentar de novo.
+- Falhas de constraint revertem a transação inteira. Falha de rede consulta o recibo da operação; se o resultado continuar incerto, a tela bloqueia nova execução e oferece Verificar operação.
+- Fotos são preparadas antes da transação. Falhas de rede ou gravação podem deixar cópias sem referência no Storage. Elas são preservadas para não apagar fotos de uma operação que possa ter sido concluída. Não há exclusão automática de arquivos antigos.
+- Limites no navegador: JSON de até 160 MB; até 100 MB de fotos no total; até 5 MB por foto, em PNG, JPEG, GIF ou WebP; registros de até 30 MB e até 50 mil linhas por módulo. Acima disso, use recuperação no servidor.
+- Backups completos v2 são aceitos com aviso sobre ausência de checksum original. Arquivos legados sem todos os cinco módulos são recusados para impedir que uma exportação parcial apague os outros módulos.
+- SHA-256 verifica integridade, não comprova a origem ou assinatura do arquivo. Use apenas arquivos sob seu controle.
+- Cópias anteriores ocupam espaço no mesmo banco e são mantidas sem exclusão automática. Não substituem um JSON externo nem um backup integral do projeto.
+- CSV contém somente cidadãos e não é aceito para restauração.
 
 ## Roteiro de conferência no banco real
 
@@ -56,7 +66,7 @@ Não foi acrescentado um botão de restauração automática. Para restaurar o J
 - Combustível continua ligado ao cidadão, sem atribuição por veículo, aprovação ou controle de saldo.
 - A listagem geral de cotas continua limitada aos últimos 500 lançamentos; histórico individual e relatório por liderança buscam todos.
 - O mapa global mantém o limite de 5 mil pontos. Não o utilize como conferência do total de cadastros.
-- Não houve revisão das Edge Functions nem das políticas RLS existentes: esses códigos não vieram no ZIP.
+- Esta entrega não altera as Edge Functions. A restauração mantém a regra de combustível exclusivo do administrador.
 - O upload da foto é uma operação de Storage anterior à transação SQL. Se a gravação no banco falhar, pode restar uma foto sem referência no bucket; isso não apaga a foto anterior.
 - O salvamento atômico impede gravação parcial, mas não oferece comparação de versões de formulários abertos simultaneamente. A última gravação pode substituir alterações de outro editor.
 

@@ -1,4 +1,5 @@
 import { fetchAllRows } from './data.js';
+import { sealBackup } from './backup-format.js';
 
 export const BACKUP_TABLES = ['cidadaos', 'demandas', 'notes', 'veiculos', 'cotas_combustivel', 'profiles'];
 
@@ -12,6 +13,7 @@ export async function collectBackupTables(client, onProgress = () => {}) {
 }
 
 export function photoStoragePath(rawUrl, projectUrl) {
+    if (String(rawUrl).startsWith('storage://fotos-cidadaos/')) return String(rawUrl).slice('storage://fotos-cidadaos/'.length);
     const url = new URL(rawUrl);
     if (url.origin !== new URL(projectUrl).origin) return null;
     const prefix = '/storage/v1/object/public/fotos-cidadaos/';
@@ -57,4 +59,18 @@ export function buildBackup(tables, photos, startedAt, finishedAt = new Date().t
         ...tables,
         files: photos.files
     };
+}
+
+// RPC usa um único snapshot do banco; nenhum fallback paginado é chamado silenciosamente.
+export async function createPortableBackup(client, projectUrl, encodeBlob, onProgress = () => {}) {
+    onProgress('Lendo os dados no mesmo instante...');
+    const { data, error } = await client.rpc('exportar_aplicacao_v1');
+    if (error || !data) throw new Error(error?.message || 'Não foi possível exportar a base.');
+    const photos = await collectBackupPhotos(client, data.cidadaos, projectUrl, encodeBlob, onProgress);
+    const payload = buildBackup(data, photos, new Date().toISOString());
+    payload.schema_version = 3;
+    payload.manifest.consistent_snapshot = true;
+    payload.manifest.project_url = projectUrl;
+    payload.manifest.note = 'Registros capturados em um snapshot transacional. Fotos copiadas em seguida; preserve os arquivos durante a exportação.';
+    return sealBackup(payload);
 }
