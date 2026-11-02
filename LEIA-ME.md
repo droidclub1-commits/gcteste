@@ -135,3 +135,7 @@ Somente administradores podem salvar. A edição compara a revisão carregada pa
 Baixar configuração salva gera um JSON só com esses parâmetros. Carregar configuração JSON preenche o formulário para revisão e exige Salvar configuração para aplicar. O backup/restauração dos dados da aplicação não substitui a configuração: preserve também esse JSON, além do backup completo do banco.
 
 Há uma campanha por instalação. Trocar o nome da campanha ou município não cria uma nova base nem isola dados entre clientes. Para um novo cliente, use implantação e projeto Supabase separados, configure os endpoints/chaves públicas do cliente em `js/config.js` e `cadastro-publico.js`, instale o esquema/políticas/funções e publique sua própria interface. Contas, segredos, domínio, Edge Functions, logomarca e ícones exigem configuração própria da implantação. Os scripts de evolução em `sql/` pressupõem o esquema original e não provisionam sozinhos um projeto vazio.
+
+## Hospedagem gratuita no Cloudflare Pages
+
+O comando `npm run build` prepara somente os arquivos públicos em `dist`. Configure o Pages com build `npm run build`, saída `dist` e branch `main`. Use `SKIP_DEPENDENCY_INSTALL=true` e `NODE_VERSION=22`. O procedimento completo, validação, repositório privado e recuperação estão em [MIGRACAO-CLOUDFLARE.md](MIGRACAO-CLOUDFLARE.md). O Supabase existente continua sendo usado; a migração não exige plano pago.
