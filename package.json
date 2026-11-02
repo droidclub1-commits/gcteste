@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "test:sql": "node tests/sql-check.cjs && node tests/fuel-sql-check.cjs && node tests/restore-sql-check.cjs && node tests/demandas-sql-check.cjs && node tests/audit-sql-check.cjs && node tests/import-sql-check.cjs && node tests/campaign-sql-check.cjs",
+    "test:sql": "node tests/sql-check.cjs && node tests/fuel-sql-check.cjs && node tests/restore-sql-check.cjs && node tests/demandas-sql-check.cjs && node tests/audit-sql-check.cjs && node tests/import-sql-check.cjs && node tests/campaign-sql-check.cjs && node tests/supplier-sql-check.cjs",
     "test:dom": "node tests/dom-check.cjs",
     "test:browser": "node tests/browser-check.cjs",
     "build": "node scripts/build-site.mjs"

@@ -126,11 +126,11 @@ Se a resposta de rede não for confirmada, mantenha o diálogo aberto e use Tent
 
 Aplique `sql/007_configuracao_campanha.sql` depois das instalações anteriores. A instalação inicial mantém o nome atual e os municípios do Amapá; nenhuma campanha, candidato ou ano são inventados, e os endereços existentes não são alterados.
 
-O administrador acessa Configuração da campanha no menu. Campos: nome do sistema, nome da campanha, nome público do candidato (opcional), ano (opcional), município principal/UF, municípios atendidos, centro e zoom inicial do mapa e tema (azul, verde, roxo ou vinho). O município principal deve constar na lista, que aceita até 200 nomes sem repetição. A identificação e as opções são públicas, usadas também na página de cadastro público; nunca informe senhas, chaves ou dados privados nesses campos.
+O administrador acessa Configuração da campanha no menu em modo de consulta. Apenas uma conta de fornecedor explicitamente autorizada pode editar. Campos: nome do sistema, nome da campanha, nome público do candidato (opcional), ano (opcional), município principal/UF, municípios atendidos, centro e zoom inicial do mapa e tema (azul, verde, roxo ou vinho). O município principal deve constar na lista, que aceita até 200 nomes sem repetição. A identificação e as opções são públicas, usadas também na página de cadastro público; nunca informe senhas, chaves ou dados privados nesses campos.
 
 A configuração altera os títulos, a identificação da campanha, o tema, as opções de município, os padrões de novos cadastros e o centro do mapa quando não há pontos. O relatório impresso identifica a campanha e o município principal. Endereços existentes, inclusive de outras localidades, são preservados ao editar. As localidades já presentes nos registros visíveis continuam disponíveis nos filtros. A consulta de CEP usa a UF retornada pelo ViaCEP e preserva a localidade mesmo fora da lista configurada.
 
-Somente administradores podem salvar. A edição compara a revisão carregada para evitar sobrescrever uma alteração de outra sessão; use Recarregar configuração quando houver conflito. Alterações são registradas no Histórico do sistema, com valores anteriores e posteriores. Outras abas e sessões recebem novas configurações ao recarregar.
+Somente fornecedores explicitamente autorizados podem salvar. O perfil administrador do cliente, por si só, não concede essa autorização. A edição compara a revisão carregada para evitar sobrescrever uma alteração de outra sessão; use Recarregar configuração quando houver conflito. Alterações são registradas no Histórico do sistema, com valores anteriores e posteriores. Outras abas e sessões recebem novas configurações ao recarregar.
 
 Baixar configuração salva gera um JSON só com esses parâmetros. Carregar configuração JSON preenche o formulário para revisão e exige Salvar configuração para aplicar. O backup/restauração dos dados da aplicação não substitui a configuração: preserve também esse JSON, além do backup completo do banco.
 
@@ -139,3 +139,27 @@ Há uma campanha por instalação. Trocar o nome da campanha ou município não 
 ## Hospedagem gratuita no Cloudflare Pages
 
 O comando `npm run build` prepara somente os arquivos públicos em `dist`. Configure o Pages com build `npm run build`, saída `dist` e branch `main`. Use `SKIP_DEPENDENCY_INSTALL=true` e `NODE_VERSION=22`. O procedimento completo, validação, repositório privado e recuperação estão em [MIGRACAO-CLOUDFLARE.md](MIGRACAO-CLOUDFLARE.md). O Supabase existente continua sendo usado; a migração não exige plano pago.
+
+## Configuração reservada ao fornecedor
+
+Aplique `sql/008_configuracao_somente_fornecedor.sql` depois do SQL 007 e atualize a Edge Function `manage-users` com `supabase/functions/manage-users/index.ts`, preservando as variáveis de ambiente existentes e JWT obrigatório. Primeiro instale o SQL, depois publique a função e a interface. A instalação não concede autorização automaticamente a nenhum administrador.
+
+- Fornecedor: perfil admin mais autorização independente na tabela privada `platform_private.suppliers`; pode editar e carregar configuração.
+- Administrador do cliente: consulta e baixa a configuração salva; campos e ações de alteração ficam bloqueados.
+- Cadastrador: continua sem acesso à página administrativa de configuração.
+
+A autorização de fornecedor só é concedida ou removida por uma operação privilegiada fora do painel do cliente, por exemplo pelo SQL Editor do Supabase. Confirme a identidade da conta antes de conceder; nunca promova automaticamente o primeiro administrador, todos os administradores, ou um e-mail definido pelo navegador. O registro usa o ID estável do usuário no Auth, não uma comparação de e-mail a cada acesso. Exemplo de concessão, após conferir o usuário correto no ambiente:
+
+```sql
+INSERT INTO platform_private.suppliers(user_id)
+SELECT u.id FROM auth.users u
+JOIN public.profiles p ON p.id=u.id AND p.role='admin'
+WHERE lower(u.email)=lower('EMAIL_CONFIRMADO_DO_FORNECEDOR')
+ON CONFLICT(user_id) DO NOTHING;
+```
+
+Não coloque IDs ou e-mails reais de fornecedores no código nem em arquivos públicos. Para revogar, remova a linha correspondente pelo mesmo canal privilegiado. A autorização é consultada no banco a cada gravação; revogação ou mudança para cadastrador bloqueia novas alterações sem depender de atualizar o token JWT. A interface confere a autorização no login e ao abrir/recarregar a configuração. Erro de conferência mantém o acesso somente consulta.
+
+A proteção vale também para chamadas diretas à API e políticas permissivas legadas. Clientes não podem inserir, alterar ou excluir a autorização. A função de gestão de usuários bloqueia alteração de perfil/exclusão das contas protegidas; a referência ao Auth também impede removê-las inadvertidamente. A manutenção deliberada dessas contas exige remover a autorização previamente pelo operador responsável. A conferência dessa proteção no servidor falha fechada: se não puder verificá-la, não altera nem exclui a conta. O campo role do painel não cria fornecedores.
+
+A lista de fornecedores não entra nos backups portáteis nem na restauração dos cadastros da aplicação. Preserve-a no backup completo do banco e provisione o fornecedor explicitamente em cada nova instalação. As configurações e os dados existentes não são alterados por essa atualização.

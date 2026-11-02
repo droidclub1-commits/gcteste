@@ -11,6 +11,7 @@
 export const state = {
     user: null,
     userRole: null,
+    campaignSupplier: false,
     allCidadaos: [],
     allDemandas: [],
     allLeaders: []
