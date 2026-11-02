@@ -1,5 +1,17 @@
 # Migração gratuita para Cloudflare Pages
 
+## Publicação configurada
+
+- Endereço: https://gestor-cidadao-danillo.pages.dev
+- Projeto Pages: `gestor-cidadao-danillo`.
+- Repositório conectado: `droidclub1-commits/gcteste`, branch `main`.
+- Build: `npm run build`; saída `dist`; Node 22; instalação de dependências desativada.
+- Publicação automática de produção ativa; previews automáticos desativados.
+- Publicação estática, sem Pages Functions ou contratação de plano pago.
+- Verificados via HTTP: página inicial, cadastro público, privacidade, módulos e ícone; arquivos SQL, testes, package.json e este guia retornam 404 no site publicado.
+- O banco, as contas e as fotos continuam no mesmo Supabase. É necessário entrar novamente no endereço novo.
+- A mudança do repositório para privado e a desativação do GitHub Pages ainda precisam ser concluídas nas configurações do GitHub; os recursos disponíveis nesta integração não oferecem esses ajustes administrativos. O endereço antigo foi mantido até essa etapa. Novas publicações continuam sendo verificáveis pelo painel Cloudflare.
+
 Este procedimento muda a hospedagem da interface. O banco, as contas, as fotos, as funções e as regras de acesso continuam no mesmo projeto Supabase. Nenhuma assinatura, domínio pago, Workers Paid ou outro produto pago é necessário para esta migração.
 
 ## 1. Preparar o código
