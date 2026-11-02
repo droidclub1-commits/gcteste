@@ -2,8 +2,9 @@
 
 ## Publicação configurada
 
-- Endereço: https://gestor-cidadao-danillo.pages.dev
-- Projeto Pages: `gestor-cidadao-danillo`.
+- Endereço principal: https://gestorcidadao.pages.dev
+- Projeto Pages principal: `gestorcidadao`.
+- Endereço anterior preservado: https://gestor-cidadao-danillo.pages.dev (projeto renomeado no painel para `gestor-cidadao`). Os dois projetos continuam ligados à mesma branch e ao mesmo Supabase; não são bases separadas.
 - Repositório conectado: `droidclub1-commits/gcteste`, branch `main`.
 - Build: `npm run build`; saída `dist`; Node 22; instalação de dependências desativada.
 - Publicação automática de produção ativa; previews automáticos desativados.
