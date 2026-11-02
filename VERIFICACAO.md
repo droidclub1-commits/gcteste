@@ -51,3 +51,7 @@ Testados validação de nomes, municípios, UF, ano, coordenadas, zoom e temas; 
 A interface passou em DOM simulado e Chromium, incluindo a página pública com configuração de outro estado e a consulta de CEP fora da lista. Passaram 31 testes unitários e todas as suítes SQL isoladas.
 
 Instalação concluída. A verificação transacional de salvamento, revisão, auditoria, recusa de edição desatualizada, bloqueio de escrita sem permissão e leitura da configuração pública passou e foi revertida ao final. Nenhuma configuração de teste permaneceu. A conferência de restauração preservou a configuração vigente. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
+
+## Preparação para Cloudflare Pages
+
+Passaram 33 testes unitários, incluindo a composição da pasta pública, caminhos de assets e imports, exclusão de infraestrutura e proteção contra sobrescrever diretórios de origem. `npm run build` gera `dist` sem dependências de produção e inclui 404 e cabeçalhos de resposta. Publicação no Cloudflare e mudança de visibilidade do repositório devem ser verificadas antes de desativar o endereço anterior.
