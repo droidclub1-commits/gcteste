@@ -1,3 +1,4 @@
+import { loadCampaignCapability } from './js/campaign-access.js';
 import { setupCampaignUI, resetCampaignUI, applyCampaignAccessUI, loadCampaign, openCampaignSettings } from './js/campaign-settings.js';
 import { campaignReportLabel } from './js/campaign-model.js';
 import { setupEntryUI, resetEntryUI, applyEntryAccessUI } from './js/cadastro-entry.js';
@@ -426,6 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Perfil não encontrado.');
             }
             state.userRole = profileData.role;
+            await loadCampaignCapability();
             await loadCampaign().catch(error => showToast(error.message, 'warning'));
             applyRoleUI();
 

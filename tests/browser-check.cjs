@@ -339,7 +339,7 @@ const server = http.createServer((req, res) => {
             const originalFrom=window.__client.from,originalRpc=window.__client.rpc;
             window.__campaign={...structuredClone(model.DEFAULT_CAMPAIGN),revision:1};
             window.__client.from=table=>table==='campanha_config'?{select(){return this;},eq(){return this;},async single(){return{data:structuredClone(window.__campaign)};}}:originalFrom(table);
-            let writes=0;window.__client.rpc=async(name,args)=>{if(name!=='salvar_configuracao_campanha_v1')return originalRpc(name,args);writes++;if(args.p_revision!==window.__campaign.revision)return{error:{code:'40001',message:'Alterada por outra sessão'}};window.__campaign={...args.p_data,revision:args.p_revision+1};return{data:structuredClone(window.__campaign)};};
+            let writes=0;window.__campaignSupplier=true;window.__client.rpc=async(name,args)=>{if(name==='pode_configurar_campanha_v1')return{data:window.__campaignSupplier};if(name!=='salvar_configuracao_campanha_v1')return originalRpc(name,args);writes++;if(args.p_revision!==window.__campaign.revision)return{error:{code:'40001',message:'Alterada por outra sessão'}};window.__campaign={...args.p_data,revision:args.p_revision+1};return{data:structuredClone(window.__campaign)};};
             ui.setupCampaignUI();ui.applyCampaignAccessUI();await ui.openCampaignSettings();
             document.getElementById('campaign-app_name').value='<img src=x onerror=alert(1)>';
             document.getElementById('campaign-city').value='Belém';document.getElementById('campaign-uf').value='PA';document.getElementById('campaign-municipalities').value='Belém\nAnanindeua';document.getElementById('campaign-theme').value='green';
@@ -351,13 +351,16 @@ const server = http.createServer((req, res) => {
             window.__campaign.revision++;
             document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();await Promise.resolve();
             const stale=document.getElementById('campaign-status').textContent.includes('outra sessão');
+            window.__campaignSupplier=false;await ui.openCampaignSettings();
+            const readOnly=document.getElementById('campaign-uf').disabled&&document.querySelector('[data-campaign-edit]').classList.contains('hidden')&&document.getElementById('campaign-status').textContent.includes('consulta');
+            document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();const clientBlocked=writes===2;
             window.__state.userRole='cadastrador';ui.applyCampaignAccessUI();await ui.openCampaignSettings();document.getElementById('campaign-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve();
             const blocked=writes===2&&document.querySelector('[data-campaign-admin]').classList.contains('hidden');
             window.__state.userRole='admin';ui.resetCampaignUI();ui.applyCampaignAccessUI();model.setCampaign(model.DEFAULT_CAMPAIGN);model.applyCampaignDOM();window.__client.from=originalFrom;window.__client.rpc=originalRpc;
-            return{safe,options,preserved,historical,stale,blocked};
+            return{safe,options,preserved,historical,stale,blocked,readOnly,clientBlocked};
         });
-        assert(campaign.safe);assert(campaign.options.includes('Belém'));assert(campaign.preserved);assert(campaign.historical);assert(campaign.stale);assert(campaign.blocked);
-        console.log('PASS: configuração por admin, concorrência, identificação segura e municípios atuais/anteriores preservados.');
+        assert(campaign.safe);assert(campaign.options.includes('Belém'));assert(campaign.preserved);assert(campaign.historical);assert(campaign.stale);assert(campaign.blocked);assert(campaign.readOnly);assert(campaign.clientBlocked);
+        console.log('PASS: configuração só pelo fornecedor, admin somente consulta, concorrência e municípios anteriores preservados.');
         if(typeof page.waitForFunction==='function'){
             const publicPage=await browser.newPage();const publicErrors=[];publicPage.on('pageerror',e=>publicErrors.push(e.message));
             await publicPage.route('**/*',route=>{

@@ -55,3 +55,9 @@ Instalação concluída. A verificação transacional de salvamento, revisão, a
 ## Preparação para Cloudflare Pages
 
 Passaram 33 testes unitários, incluindo a composição da pasta pública, caminhos de assets e imports, exclusão de infraestrutura e proteção contra sobrescrever diretórios de origem. `npm run build` gera `dist` sem dependências de produção e inclui 404 e cabeçalhos de resposta. Publicação no Cloudflare e mudança de visibilidade do repositório devem ser verificadas antes de desativar o endereço anterior.
+
+## Configuração exclusiva do fornecedor
+
+Passaram os testes isolados de separação entre fornecedor e administrador do cliente, leitura sem edição, bloqueio de chamadas diretas e de políticas permissivas legadas, recusa de autoelevação, revogação e proteção de conta. A função de gestão de usuários foi testada para recusar alteração/exclusão de fornecedor e falhar fechada em erro de conferência. A interface foi testada em DOM simulado para manter administradores comuns em consulta e não enviar salvamento.
+
+Instalação concluída, com fornecedor provisionado explicitamente fora do código. A Edge Function de gestão de usuários foi atualizada mantendo JWT obrigatório. Passaram 35 testes unitários, todas as suítes SQL isoladas e o fluxo de DOM simulado. A verificação transacional no ambiente conectado confirmou fornecedor autorizado, bloqueio de administrador sem essa autorização, recusa de autoelevação, auditoria e concorrência, e foi revertida sem configurações de teste restantes. A checagem de segurança posterior não apresentou avisos adicionais desta alteração.
