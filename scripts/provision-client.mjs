@@ -48,7 +48,12 @@ const keyFor = (keys, name) => {
 const centralKey = keyFor(await keysFor(central), 'service_role');
 const rpc = (name, body = {}) => api(central, centralKey, `/rest/v1/rpc/${name}`, { method: 'POST', body });
 const [job] = await rpc('reivindicar_instalacao_cliente_v1');
-if (!job) process.exit(0);
+if (!job) {
+    await Promise.all([management('/projects'), management(`/organizations/${organization}`),
+        query(central, 'SELECT 1 AS executor_check'), pages('')]);
+    console.log('Fila vazia. Supabase e Cloudflare Pages acessíveis.');
+    process.exit(0);
+}
 
 const { slug, provision_id: id, provision_updated_at: lease } = job;
 let ref = job.project_ref;
