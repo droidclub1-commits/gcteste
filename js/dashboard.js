@@ -30,6 +30,9 @@ export async function updateDashboard() {
     const generation = ++dashboardGeneration;
     const totalEl = document.getElementById('dashboard-total-cidadaos');
     const demandasEl = document.getElementById('dashboard-total-demandas');
+    const abertasEl = document.getElementById('dashboard-demandas-abertas');
+    const atrasadasEl = document.getElementById('dashboard-demandas-atrasadas');
+    const tracking = document.getElementById('dashboard-demandas-prazos');
     try {
         // Independente dos filtros e caches das telas de cidadãos/demandas.
         const [cidadaos, demandas] = await Promise.all([
@@ -39,12 +42,13 @@ export async function updateDashboard() {
         if (generation !== dashboardGeneration) return;
         if (totalEl) { totalEl.textContent = cidadaos.length; totalEl.classList.remove('animate-pulse'); }
         if (demandasEl) { demandasEl.textContent = demandas.length; demandasEl.classList.remove('animate-pulse'); }
-        const tracking=document.getElementById('dashboard-demandas-prazos');
+        const abertas = demandas.filter(d => d.status !== 'completed');
+        if (abertasEl) abertasEl.textContent = abertas.length;
+        if (atrasadasEl) atrasadasEl.textContent = abertas.filter(d => deadlineState(d) === 'atrasada').length;
         if (tracking) {
-            const overdue=demandas.filter(d=>deadlineState(d)==='atrasada').length;
-            const today=demandas.filter(d=>deadlineState(d)==='hoje').length;
-            const urgent=demandas.filter(d=>d.prioridade==='urgente' && d.status!=='completed').length;
-            tracking.textContent=`${overdue} em atraso · ${today} vencem hoje · ${urgent} urgentes abertas`;
+            const today = abertas.filter(d => deadlineState(d) === 'hoje').length;
+            const urgent = abertas.filter(d => d.prioridade === 'urgente').length;
+            tracking.textContent = `${today} vencem hoje · ${urgent} urgentes abertas`;
         }
         updateDemandasRecentes(demandas);
         await Promise.all([
@@ -56,10 +60,10 @@ export async function updateDashboard() {
     } catch (error) {
         if (generation !== dashboardGeneration) return;
         console.error('Dashboard:', error);
-        for (const el of [totalEl, demandasEl]) {
+        for (const el of [totalEl, demandasEl, abertasEl, atrasadasEl]) {
             if (el) { el.textContent = 'Indisponível'; el.classList.remove('animate-pulse'); }
         }
-        if (document.getElementById('dashboard-demandas-prazos')) document.getElementById('dashboard-demandas-prazos').textContent='';
+        if (tracking) tracking.textContent = '';
         _aniversariantesTodos = [];
         const anivTotal = document.getElementById('aniversariantes-total');
         if (anivTotal) anivTotal.textContent = '';
@@ -257,6 +261,60 @@ function updateDemandasRecentes(demandas) {
     });
 }
 
+function dashboardChartOptions(legend = false) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 240 },
+        plugins: { legend: { display: legend, position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } }
+    };
+}
+
+function rankingOptions(canvas, count) {
+    canvas.parentElement.style.setProperty('--ranking-height', `${count * 30 + 30}px`);
+    return {
+        ...dashboardChartOptions(),
+        indexAxis: 'y',
+        scales: {
+            x: { beginAtZero: true, ticks: { precision: 0 } },
+            y: {
+                grid: { display: false },
+                afterFit(scale) { scale.width = Math.min(scale.width, scale.chart.width * 0.48); },
+                ticks: {
+                    callback(value) {
+                        const label = this.getLabelForValue(value);
+                        const maxLength = Math.max(12, Math.floor(this.chart.width / 17));
+                        return label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+                    }
+                }
+            }
+        }
+    };
+}
+
+const demandTotalLabel = {
+    id: 'demandTotalLabel',
+    afterDraw(chart) {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const arc = chart.getDatasetMeta(0).data[0];
+        const x = arc?.x ?? (chartArea.left + chartArea.right) / 2;
+        const y = arc?.y ?? (chartArea.top + chartArea.bottom) / 2;
+        const total = chart.data.datasets[0].data.reduce((sum, count) => sum + count, 0);
+        const styles = getComputedStyle(chart.canvas);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = styles.getPropertyValue('--gc-ink').trim() || '#0F2A4A';
+        ctx.font = '700 24px Inter, sans-serif';
+        ctx.fillText(total.toLocaleString('pt-BR'), x, y - 8);
+        ctx.fillStyle = styles.getPropertyValue('--gc-muted').trim() || '#6B7280';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.fillText('Total', x, y + 14);
+        ctx.restore();
+    }
+};
+
 async function updateCidadaosPorTipoChart(data) {
     const ctx = document.getElementById('cidadaos-por-tipo-chart');
     if (!ctx) return;
@@ -273,9 +331,9 @@ async function updateCidadaosPorTipoChart(data) {
 
         if (cidadaosChart) cidadaosChart.destroy();
         cidadaosChart = new Chart(ctx, {
-            type: 'pie',
+            type: 'doughnut',
             data: { labels, datasets: [{ label: 'Cidadãos por Tipo', data: values, backgroundColor: cores.slice(0, labels.length) }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { ...dashboardChartOptions(true), cutout: '65%' }
         });
     } catch(e) { console.warn('Chart tipo:', e); }
 }
@@ -295,7 +353,8 @@ async function updateDemandasPorStatusChart(data) {
         demandasChart = new Chart(ctx, {
             type: 'doughnut',
             data: { labels, datasets: [{ label: 'Demandas por Status', data: values, backgroundColor: colors }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { ...dashboardChartOptions(true), cutout: '72%' },
+            plugins: [demandTotalLabel]
         });
     } catch(e) { console.error('Erro gráfico demandas:', e); }
 }
@@ -315,17 +374,17 @@ async function updateCidadaosPorMunicipioChart(data) {
         const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316'];
         if (cidadaosMunicipioChart) cidadaosMunicipioChart.destroy();
         cidadaosMunicipioChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }] },
+            type: 'bar',
+            data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]), borderRadius: 5, maxBarThickness: 16 }] },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                ...rankingOptions(ctx, labels.length),
                 plugins: {
-                    legend: { position: 'bottom' },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: (c) => {
                                 const total = c.dataset.data.reduce((a, b) => a + b, 0);
-                                return ` ${c.label}: ${c.parsed} (${((c.parsed/total)*100).toFixed(1)}%)`;
+                                return ` ${c.label}: ${c.parsed.x} (${((c.parsed.x / total) * 100).toFixed(1)}%)`;
                             }
                         }
                     }
@@ -351,8 +410,8 @@ async function updateCidadaosPorBairroChart(cidadaos) {
         if (cidadaosBairroChart) cidadaosBairroChart.destroy();
         cidadaosBairroChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Cidadãos por Bairro (Top 10)', data: values, backgroundColor: '#10B981' }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+            data: { labels, datasets: [{ label: 'Cidadãos por Bairro (Top 10)', data: values, backgroundColor: '#10B981', borderRadius: 5, maxBarThickness: 16 }] },
+            options: rankingOptions(ctx, labels.length)
         });
     } catch(e) { console.warn('Chart bairro:', e); }
 }
@@ -370,9 +429,9 @@ async function updateCidadaosPorSexoChart(data) {
         const values = Object.values(contagem);
         if (cidadaosSexoChart) cidadaosSexoChart.destroy();
         cidadaosSexoChart = new Chart(ctx, {
-            type: 'pie',
+            type: 'doughnut',
             data: { labels, datasets: [{ label: 'Cidadãos por Sexo', data: values, backgroundColor: ['#3B82F6', '#EC4899', '#F59E0B', '#6B7280'] }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { ...dashboardChartOptions(true), cutout: '65%' }
         });
     } catch(e) { console.warn('Chart sexo:', e); }
 }
@@ -388,8 +447,9 @@ async function updateCidadaosPorFaixaEtariaChart(data) {
         if (cidadaosFaixaEtariaChart) cidadaosFaixaEtariaChart.destroy();
         cidadaosFaixaEtariaChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6' }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            data: { labels, datasets: [{ label: 'Cidadãos por Faixa Etária', data: values, backgroundColor: '#8B5CF6', borderRadius: 5, maxBarThickness: 28 }] },
+            options: { ...dashboardChartOptions(), scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
         });
     } catch(e) { console.warn('Chart faixa etária:', e); }
 }
+

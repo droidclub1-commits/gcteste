@@ -26,15 +26,10 @@ export function resetVeiculos() {
 }
 
 // ── Reset pós-eleição ────────────────────────────────────────────────
-// Zera o selo "adesivado" de todos os veículos e apaga todo o histórico
-// de abastecimento (tabela cotas_combustivel), mantendo cidadãos e
-// veículos cadastrados. Chama a função `reset_veiculos_pos_eleicao` no
-// Postgres (SECURITY DEFINER), que confere internamente se quem chamou
-// é admin — a checagem não depende só da UI escondida em users.js.
-// Ver o script SQL fornecido para criar essa função e a policy de RLS.
+// A RPC verifica a autorização do administrador geral a cada chamada.
 export async function resetVeiculosPosEleicao() {
     if (!requireFuelAdmin()) throw new Error('Acesso restrito ao administrador.');
-    const { data, error } = await sb.rpc('reset_veiculos_pos_eleicao');
+    const { data, error } = await sb.rpc('reset_veiculos_pos_eleicao_fornecedor_v1');
     if (error) throw error;
     // A função retorna { veiculos_atualizados, cotas_apagadas }
     return data;
@@ -136,3 +131,4 @@ export async function loadVeiculosPage(tipoFiltro = veiculosFiltroTipo) {
         tbody.appendChild(tr);
     });
 }
+

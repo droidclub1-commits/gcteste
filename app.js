@@ -1,4 +1,5 @@
-import { loadCampaignCapability } from './js/campaign-access.js';
+import { canEditCampaign, loadCampaignCapability } from './js/campaign-access.js';
+import { setupClientInstallations, resetClientInstallations } from './js/client-installations.js';
 import { setupCampaignUI, resetCampaignUI, applyCampaignAccessUI, loadCampaign, openCampaignSettings } from './js/campaign-settings.js';
 import { campaignReportLabel } from './js/campaign-model.js';
 import { setupEntryUI, resetEntryUI, applyEntryAccessUI } from './js/cadastro-entry.js';
@@ -90,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeMainApp().finally(() => { _initLock = false; });
             }
         } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-            resetAudit(); resetEntryUI(); resetCampaignUI();
+            resetAudit(); resetEntryUI(); resetCampaignUI(); resetClientInstallations();
             state.user = null;
             state.userRole = null;
             state.allCidadaos = []; state.allDemandas = []; state.allLeaders = [];
@@ -135,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finally { _initLock = false; }
             }
         } else {
-            resetAudit(); resetEntryUI(); resetCampaignUI();
+            resetAudit(); resetEntryUI(); resetCampaignUI(); resetClientInstallations();
             state.user = null;
             loginPage.classList.remove('hidden');
             appContainer.style.display = 'none';
@@ -387,6 +388,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const userForm = document.getElementById('user-form');
         if (userForm) userForm.addEventListener('submit', handleUserFormSubmit);
         setupAdminMaintenancePanel();
+        setupClientInstallations();
+        document.getElementById('open-campaign-settings')?.addEventListener('click', () => switchPage('campaign-page'));
+        document.getElementById('campaign-back')?.addEventListener('click', () => switchPage('utilizadores-page'));
         cancelDeleteBtn.addEventListener('click', closeConfirmationModal);
         confirmDeleteBtn.addEventListener('click', handleDeleteConfirmation);
         cidadaoCEP.addEventListener('blur', handleCEPBlur);
@@ -618,10 +622,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ═══════════════════════════════════════════════════════════════
     // BACKUP DE DADOS
     // ═══════════════════════════════════════════════════════════════
-    function switchPage(pageId) {
+    async function switchPage(pageId) {
+        if (pageId === 'utilizadores-page' && (!state.user || state.userRole !== 'admin')) return;
         if (pageId === 'campaign-page') {
-            if (!state.user || state.userRole !== 'admin') return;
-            openCampaignSettings();
+            if (!canEditCampaign()) return;
+            const usersPage = document.getElementById('utilizadores-page');
+            if (!await openCampaignSettings() || usersPage?.classList.contains('hidden')) return;
         }
         if (pageId === 'historico-page') {
             if (!state.user || state.userRole !== 'admin') return;
@@ -640,12 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPage = document.getElementById(pageId);
         if (newPage) {
             newPage.classList.remove('hidden');
-            const flexPages = ['campaign-page','historico-page','dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page'];
+            const flexPages = ['campaign-page','historico-page','dashboard-page','cidadaos-page','demandas-page','cobertura-page','backup-page','cotas-page','veiculos-page','utilizadores-page'];
             if (flexPages.includes(pageId)) newPage.classList.add('flex', 'flex-col');
         }
         document.querySelectorAll('#sidebar-nav a').forEach(link => {
             link.classList.remove('bg-slate-900', 'font-semibold');
-            if (link.getAttribute('href') === `#${pageId.replace('-page', '')}`) {
+            if (link.getAttribute('href') === `#${pageId === 'campaign-page' ? 'utilizadores' : pageId.replace('-page', '')}`) {
                 link.classList.add('bg-slate-900', 'font-semibold');
             }
         });
@@ -663,3 +669,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+

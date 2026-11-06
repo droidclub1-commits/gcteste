@@ -42,17 +42,20 @@ button:disabled { cursor: not-allowed; opacity: .65; }
 #login-btn:hover, #gate-btn:hover { background: var(--gc-blue-dark) !important; transform: translateY(-1px); }
 
 /* App shell */
-#app-container { min-height: 100vh; background: var(--gc-gray); }
+#app-container { background: var(--gc-gray); }
 #app-container > aside { width: 264px; flex: 0 0 264px; background: #0F2A4A !important; box-shadow: 10px 0 30px rgba(15,42,74,.08); z-index: 20; }
+#app-container > aside > :not(nav) { flex-shrink: 0; }
 #logo-btn { min-height: 82px; padding: 18px 22px !important; border-bottom: 1px solid rgba(255,255,255,.1) !important; }
 #logo-btn span { font-size: 14px; letter-spacing: .055em; }
-#sidebar-nav { padding: 22px 14px !important; }
+#sidebar-nav { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; padding: 22px 14px !important; }
+#sidebar-nav::-webkit-scrollbar { display: none; }
 #sidebar-nav ul { display: grid; gap: 6px; }
 #sidebar-nav a { min-height: 46px; color: rgba(255,255,255,.7); font-size: 13px; letter-spacing: .01em; transition: .2s ease; }
 #sidebar-nav a:hover, #sidebar-nav a.bg-slate-900 { color: #fff; background: rgba(255,255,255,.11) !important; }
 #sidebar-nav a.bg-slate-900 { box-shadow: inset 3px 0 0 var(--gc-gold); }
 #logout-btn { min-height: 44px; background: rgba(220,38,38,.84) !important; font-size: 13px; }
 #logout-btn:hover { background: #dc2626 !important; }
+.sidebar-copyright { font-size: 9px; line-height: 1.25; color: rgba(255,255,255,.62); }
 #app-container > .flex-1 { min-width: 0; }
 
 /* Shared content headers and pages */
@@ -65,10 +68,32 @@ button:disabled { cursor: not-allowed; opacity: .65; }
 .shadow-sm { box-shadow: var(--gc-shadow) !important; }
 
 /* Dashboard */
-#dashboard-page .grid { align-items: start; }
+#dashboard-page :is(.dashboard-summary, .dashboard-content, .dashboard-charts, .dashboard-widgets) {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+#dashboard-page .dashboard-summary { margin-bottom: 16px; }
+#dashboard-page .dashboard-content, #dashboard-page .dashboard-widgets { align-content: start; }
+#dashboard-page .dashboard-panel { min-width: 0; padding: clamp(14px, 2vw, 22px); }
+#dashboard-page .dashboard-panel-wide { grid-column: 1 / -1; }
+#dashboard-page .dashboard-plot { position: relative; height: 240px; }
+#dashboard-page .dashboard-ranking { height: clamp(130px, var(--ranking-height, 240px), 480px); }
 #dashboard-page .text-4xl { font-size: 2.35rem; letter-spacing: -.06em; }
-#dashboard-page .bg-white:hover { box-shadow: 0 14px 35px rgba(15,42,74,.11); }
 #dashboard-page canvas { max-width: 100%; }
+@media (min-width: 540px) {
+  #dashboard-page .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 760px) {
+  #dashboard-page :is(.dashboard-charts, .dashboard-widgets) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1260px) {
+  #dashboard-page .dashboard-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #dashboard-page .dashboard-content { grid-template-columns: minmax(0, 1fr) minmax(260px, 30%); }
+  #dashboard-page .dashboard-widgets { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* Forms, tables, filters and cards */
 input, select, textarea { border-color: var(--gc-border) !important; border-radius: 10px !important; background: #fff; transition: border-color .2s, box-shadow .2s; }
@@ -118,14 +143,13 @@ input:focus, select:focus, textarea:focus { outline: none !important; border-col
      ficar sempre visível no mobile mesmo antes do login. O JS já controla
      display:flex/none via appContainer.style.display; aqui só cuidamos do
      layout interno (aside como drawer) quando ele estiver visível. */
-  #app-container > aside { position: fixed; inset: 0 auto 0 0; width: min(82vw, 290px); transform: translateX(-102%); transition: transform .25s ease; box-shadow: 18px 0 40px rgba(15,42,74,.25); }
+  #app-container > aside { position: fixed; inset: 0 auto 0 0; max-height: 100dvh; width: min(82vw, 290px); transform: translateX(-102%); transition: transform .25s ease; box-shadow: 18px 0 40px rgba(15,42,74,.25); }
   #app-container.menu-open > aside { transform: translateX(0); }
-  #app-container > .flex-1 { min-height: 100vh; width: 100%; }
+  #app-container > .flex-1 { width: 100%; }
   #app-container > .flex-1::before { content: ''; display: block; position: fixed; inset: 0; background: rgba(15,42,74,.42); z-index: 15; opacity: 0; pointer-events: none; transition: opacity .25s; }
   #app-container.menu-open > .flex-1::before { opacity: 1; pointer-events: auto; }
   .page > header, #app-container main > header { padding: 18px 18px !important; }
   .page > div:not(.fixed), #dashboard-page > div { padding: 18px !important; }
-  #dashboard-page .grid { gap: 14px; }
   #form-page { padding: 14px !important; }
   #form-page > div { padding: 22px 17px !important; }
   #form-page .grid { gap: 22px; }
@@ -183,3 +207,4 @@ input:focus, select:focus, textarea:focus { outline: none !important; border-col
 }
 .filters-toggle-icon { transition: transform .2s ease; }
 [aria-expanded="true"] .filters-toggle-icon { transform: rotate(180deg); }
+

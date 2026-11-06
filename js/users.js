@@ -11,6 +11,7 @@ import { showToast } from './utils.js';
 import { sb, EDGE_FUNCTION_URL } from './config.js';
 import { state } from './state.js';
 import { resetVeiculosPosEleicao } from './veiculos.js';
+import { canEditCampaign } from './campaign-access.js';
 
 let allUsers = [];
 let editingUserId = null;
@@ -60,18 +61,18 @@ export function renderUsersList() {
     }
     allUsers.forEach(u => {
         const isCurrentUser = u.id === state.user.id;
-        const roleLabel = u.role === 'admin' ? 'Administrador' : 'Cadastrador';
+        const roleLabel = isCurrentUser && canEditCampaign() ? 'Administrador geral' : u.role === 'admin' ? 'Administrador' : 'Cadastrador';
         const roleBadgeColor = u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
         const lastLogin = u.last_sign_in
             ? new Date(u.last_sign_in).toLocaleDateString('pt-BR')
             : 'Nunca';
 
         const row = document.createElement('div');
-        row.className = 'bg-white p-4 rounded-lg shadow-sm border flex items-center justify-between gap-4' +
-            (isCurrentUser ? ' hover:bg-blue-50 transition-colors' : '');
+        row.className = 'bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center gap-3';
 
         const infoDiv = document.createElement('div');
         infoDiv.className = 'flex-1 min-w-0';
+        infoDiv.style.flexBasis = '12rem';
 
         const emailEl = document.createElement('p');
         emailEl.className = 'font-semibold text-gray-800 truncate';
@@ -105,18 +106,10 @@ export function renderUsersList() {
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(deleteBtn);
         } else {
-            // Card inteiro é clicável e revela o painel de funções de
-            // administrador (#admin-maintenance-panel) — não só um texto
-            // pequeno no canto, pra ficar óbvio e fácil de acertar o clique.
             const youBadge = document.createElement('span');
-            youBadge.className = 'text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1';
-            youBadge.innerHTML = '<span>Funções de admin</span>' +
-                '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+            youBadge.className = 'text-xs text-gray-600';
+            youBadge.textContent = 'Sua conta';
             actionsDiv.appendChild(youBadge);
-
-            row.style.cursor = 'pointer';
-            row.title = 'Clique para abrir as funções de administrador';
-            row.addEventListener('click', () => toggleAdminMaintenancePanel());
         }
 
         row.appendChild(infoDiv);
@@ -199,20 +192,6 @@ export async function confirmDeleteUser(u) {
     }
 }
 
-// ── Painel de funções de administrador ──────────────────────────────
-export function toggleAdminMaintenancePanel() {
-    const panel = document.getElementById('admin-maintenance-panel');
-    if (!panel) return;
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-// Wiring do botão "Zerar Adesivos e Histórico de Abastecimento".
-// Chamado uma vez no arranque da app (mesmo padrão de setupVeiculosFiltro
-// etc.) — o botão só existe/é visível dentro da página Utilizadores, que
-// já é restrita a admin no sidebar (applyRoleUI em app.js).
 export function setupAdminMaintenancePanel() {
     const btn = document.getElementById('reset-veiculos-eleicao-btn');
     if (!btn || btn._wired) return;
@@ -221,6 +200,7 @@ export function setupAdminMaintenancePanel() {
 }
 
 async function handleResetVeiculosClick() {
+    if (!canEditCampaign()) return;
     const btn = document.getElementById('reset-veiculos-eleicao-btn');
     const primeiraConfirmacao = confirm(
         'Isto vai remover o selo "adesivado" de TODOS os veículos e apagar ' +
@@ -252,3 +232,4 @@ async function handleResetVeiculosClick() {
         btn.innerHTML = originalHTML;
     }
 }
+
