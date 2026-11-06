@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Senha da conta · Gestor Cidadão</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script type="module" src="./primeiro-acesso.js"></script>
+</head>
+<body class="min-h-screen grid place-items-center p-4">
+    <main class="bg-white w-full max-w-md p-6">
+        <h1 id="password-page-title" class="text-xl font-bold">Recuperar senha</h1>
+        <p id="password-page-description" class="text-sm text-gray-600 my-3">Informe o e-mail da sua conta para receber um link de recuperação.</p>
+        <form id="password-recovery-form" class="space-y-4" hidden>
+            <label class="block">E-mail da conta
+                <input class="block w-full border p-2" name="email" type="email" autocomplete="email" required>
+            </label>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg" type="submit">Enviar link de recuperação</button>
+        </form>
+        <form id="first-access-form" class="space-y-4" hidden>
+            <label class="block">Nova senha
+                <input class="block w-full border p-2" name="password" type="password" minlength="12" autocomplete="new-password" required>
+            </label>
+            <label class="block">Confirme a senha
+                <input class="block w-full border p-2" name="confirmation" type="password" minlength="12" autocomplete="new-password" required>
+            </label>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg" type="submit">Salvar senha e entrar</button>
+        </form>
+        <p id="first-access-status" class="text-sm mt-4" role="status"></p>
+        <a href="./index.html" class="inline-block mt-4 text-blue-700 underline">Ir para o login</a>
+    </main>
+</body>
+</html>
+

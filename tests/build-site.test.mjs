@@ -11,3 +11,22 @@ test('publicação contém só a interface, resolve imports e não inclui infrae
  }finally{await rm(dest,{recursive:true,force:true});}
 });
 test('publicação recusa saída que sobrescreveria código',async()=>{await assert.rejects(buildSite(root));await assert.rejects(buildSite(path.join(root,'js')));});
+test('build por cliente configura o painel e o cadastro público para o mesmo projeto', async () => {
+ const ref='abcdefghijklmnopqrst';
+ const url=`https://${ref}.supabase.co`;
+ const keyFor=role=>`e30.${Buffer.from(JSON.stringify({ref,role})).toString('base64url')}.signature`;
+ try {
+  await assert.rejects(buildSite(dest,{url,key:keyFor('service_role')}),/chave pública anon/);
+  await assert.rejects(buildSite(dest,{url:'https://zyxwvutsrqponmlkjihg.supabase.co',key:keyFor('anon')}),/mesmo projeto/);
+  await buildSite(dest,{url,key:keyFor('anon')});
+  const internal=await readFile(path.join(dest,'js/config.js'),'utf8');
+  const publicForm=await readFile(path.join(dest,'cadastro-publico.js'),'utf8');
+  for(const file of [internal,publicForm]){
+   assert(file.includes(url));
+   assert(file.includes(keyFor('anon')));
+   assert(!file.includes('gccxghayghuqrwdmtwnn'));
+  }
+  assert(internal.includes(`${url}/functions/v1/manage-users`));
+ } finally { await rm(dest,{recursive:true,force:true}); }
+});
+

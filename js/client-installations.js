@@ -51,38 +51,40 @@ function renderClient(client) {
     const detail = document.createElement('p');
     detail.textContent = client.site_url ? client.admin_email : `${client.admin_email} · Endereço previsto: gestorcidadao-${client.slug}.pages.dev`;
     detail.className = 'break-words text-gray-600';
-    const label = document.createElement('label');
-    label.textContent = 'Etapa registrada ';
-    const select = document.createElement('select');
-    select.className = 'border rounded p-2';
-    for (const [value, text] of Object.entries(stages)) addOption(select, value, text);
-    select.value = client.stage;
-    select.addEventListener('change', async () => {
-        if (!canEditCampaign()) return;
-        const user = state.user.id;
-        const next = select.value;
-        select.disabled = true;
-        try {
-            const { error } = await sb.rpc('atualizar_etapa_cliente_v1', {
-                p_slug: client.slug, p_stage: next, p_expected_stage: client.stage
-            });
-            if (error) throw error;
-            client.stage = next;
-            if (state.user?.id === user) element('client-installation-status').textContent = 'Etapa registrada.';
-        } catch (error) {
-            select.value = client.stage;
-            if (state.user?.id === user) element('client-installation-status').textContent = error.message;
-        } finally {
-            select.disabled = false;
-        }
-    });
-    label.append(select);
+    const progress = document.createElement('p');
+    const stateLabel = { queued: 'Na fila', running: 'Em andamento', failed: 'Ação pendente' };
+    progress.textContent = [stages[client.stage], stateLabel[client.provision_state], client.provision_note].filter(Boolean).join(' · ');
+    item.append(title, detail, progress);
+    const stale = client.provision_state === 'running' &&
+        Date.now() - Date.parse(client.provision_updated_at) > 25 * 60 * 1000;
+    if (client.stage !== 'active' && client.provision_state !== 'queued' && (client.provision_state !== 'running' || stale)) {
+        const start = document.createElement('button');
+        start.type = 'button';
+        start.className = 'bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg';
+        start.textContent = client.stage === 'invited' ? 'Verificar ativação' :
+            client.provision_state === 'failed' || client.project_ref ? 'Retomar instalação' : 'Criar instalação';
+        start.addEventListener('click', async () => {
+            if (!canEditCampaign()) return;
+            const user = state.user.id;
+            start.disabled = true;
+            try {
+                const { error } = await sb.rpc('solicitar_instalacao_cliente_v1', { p_slug: client.slug });
+                if (error) throw error;
+                if (state.user?.id === user) await loadClients();
+            } catch (error) {
+                if (state.user?.id === user) element('client-installation-status').textContent = error.message;
+            } finally {
+                start.disabled = false;
+            }
+        });
+        item.append(start);
+    }
     const download = document.createElement('button');
     download.type = 'button';
     download.className = 'block text-blue-700 underline';
     download.textContent = 'Baixar configuração inicial';
     download.addEventListener('click', () => downloadConfiguration(client));
-    item.append(title, detail, label, download);
+    item.append(download);
     if (/^https:\/\/[a-z0-9][a-z0-9-]{0,62}\.pages\.dev$/.test(client.site_url)) {
         const link = document.createElement('a');
         link.href = client.site_url;
@@ -134,6 +136,7 @@ export function setupClientInstallations() {
     panel.addEventListener('toggle', () => {
         if (panel.open) loadClients();
     });
+    element('refresh-client-installations').addEventListener('click', loadClients);
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (!canEditCampaign()) return;
